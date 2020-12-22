@@ -1,0 +1,9 @@
+{
+    "[git-commit]": {
+    
+        "editor.rulers": [
+            72
+        ],
+        "workbench.editor.restoreViewState": false
+    }
+}
