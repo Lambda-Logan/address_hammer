@@ -1,5 +1,4 @@
 from __future__ import annotations
-from _typeshed import OpenBinaryMode
 import typing as t
 import re
 
@@ -24,6 +23,13 @@ class ParseError(Exception):
 class EndOfAddressError(ParseError):
     def __init__(self, orig: str, reason: str):
         super(ParseError, self).__init__(reason + ": end of input of " + orig)
+
+class ParserConfigError(Exception):
+    msg: str
+    def __init__(self, msg: str):
+        super(ParserConfigError, self).__init__(msg)
+        self.msg = msg
+
 
 class ParseResult(t.NamedTuple):
     label: str
@@ -146,11 +152,11 @@ class Parser:
     required : t.Set[str] = set(["house_number", "st_name", "st_NESW", "st_suffix", "city", "us_state", "zip_code"])
     known_cities : t.List[str] = []
     known_cities_R : t.Optional[t.Pattern[str]] = None
-    def __init__(self, optionals:t.List[str] | str = [], known_cities:t.List[str] | str = []):
+    def __init__(self, optionals:t.List[str] | str = [], known_cities:t.List[str]= []):
+        if "st_NESW" in optionals and "st_suffix" in optionals and len(known_cities) ==0:
+            raise ParserConfigError("'st_NESW' and 'st_suffix' can only be optional if the 'known_cities' kwarg is provided.")
         if isinstance(optionals, str):
-            optionals = [optionals]
-        if isinstance(known_cities, str):
-            known_cities = [known_cities]
+            optionals = optionals.split()
         known_cities = list(filter(None, known_cities))
         if known_cities:
             self.blank_parse = Parser(optionals=optionals,known_cities = [] )
@@ -158,7 +164,7 @@ class Parser:
             self.blank_parse = None
         for opt in optionals:
             if opt not in Parser.required:
-                raise KeyError("{0} is not a vaild optional arg, they are \"st_NESW\", \"st_suffix\", \"city\", \"us_state\", \"zip_code\"".format(opt))
+                raise ParserConfigError("{0} is not a vaild optional arg, they are \"st_NESW\", \"st_suffix\", \"city\", \"us_state\", \"zip_code\"".format(opt))
         self.required = set([field for field in Parser.required if field not in optionals])
         normalized_cities = [self.__tokenize__(city) for city in known_cities]
         normalized_cities_B = [w.replace(" ", r"[\s_]") for w in normalized_cities]
@@ -315,11 +321,14 @@ def test():
             raise Exception("Failed test " + s)
         except (ParseError, EndOfInputError):
             pass
-    try:
-        Parser(optionals=["st_nesw"])
-        raise Exception("Test failed: allowed an illegal optional argument")
-    except KeyError:
-        pass
+    invalid_configs = [{"optionals":["st_nesw"]},
+                       {"optionals":["st_NESW", "st_suffix"]}]
+    for ic in invalid_configs:
+        try:
+            Parser(**ic)
+            raise Exception("Test failed: allowed an illegal optional argument")
+        except ParserConfigError:
+            pass
 
 
 

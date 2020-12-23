@@ -7,3 +7,5 @@ def all_tests():
     address.test()
     __zipper__.test()
     parsing.test()
+
+all_tests()
