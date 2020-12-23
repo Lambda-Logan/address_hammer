@@ -1,4 +1,5 @@
 from __future__ import annotations
+from _typeshed import OpenBinaryMode
 import typing as t
 import re
 
@@ -12,6 +13,7 @@ Fn = t.Callable
 #TODO correctly handle all usps secondary unit identifiers and 1/2
 
 class ParseError(Exception):
+    "The base class for all parsing errors"
     orig: str
     reason: str
     def __init__(self, address_string: str, reason: str):
@@ -19,9 +21,9 @@ class ParseError(Exception):
         self.orig = address_string
         self.reason = reason
 
-class EndOfAddress(ParseError):
-    def __init__(self, address: str, label: str):
-        super(ParseError, self).__init__(label + ": end of input of " + address)
+class EndOfAddressError(ParseError):
+    def __init__(self, orig: str, reason: str):
+        super(ParseError, self).__init__(reason + ": end of input of " + orig)
 
 class ParseResult(t.NamedTuple):
     label: str
@@ -132,13 +134,24 @@ def city_repl(s:t.Match[str])->str:
     return " "+s.group(0).strip().replace(" ", "_")+" "
 Zip = Zipper[str, str]
 class Parser:
+    """
+    A callable address parser.
+
+    'p = Parser()' will by default require "st_NESW", "st_suffix" and "zip_code"
+    (^ this can be changed via the 'optionals' parameter)
+    """
     blank_parse: t.Optional[Parser]
     city: Fn[[str], t.Sequence[ParseResult]]
     st_name: Fn[[str], t.Sequence[ParseResult]]
     required : t.Set[str] = set(["house_number", "st_name", "st_NESW", "st_suffix", "city", "us_state", "zip_code"])
     known_cities : t.List[str] = []
     known_cities_R : t.Optional[t.Pattern[str]] = None
-    def __init__(self, optionals:t.List[str] = [], known_cities:t.List[str] = []):
+    def __init__(self, optionals:t.List[str] | str = [], known_cities:t.List[str] | str = []):
+        if isinstance(optionals, str):
+            optionals = [optionals]
+        if isinstance(known_cities, str):
+            known_cities = [known_cities]
+        known_cities = list(filter(None, known_cities))
         if known_cities:
             self.blank_parse = Parser(optionals=optionals,known_cities = [] )
         else:
@@ -208,7 +221,8 @@ class Parser:
                 z = z.consume_with(_ZIP_CODE)
 
         except EndOfInputError as e:
-            raise EndOfInputError( orig = _s)
+            raise EndOfAddressError(_s, "unknown")
+
         except ParseError as e:
             raise ParseError(_s, e.reason)
 
@@ -240,6 +254,12 @@ class Parser:
 def smart_batch(p: Parser,
                adds:t.Iterable[str],
                report_error: Fn[[Exception, str], None] = lambda e,s: None) -> t.Iterable[Address]:
+    """
+    This function takes an iter of address strings and tries to repair dirty addresses by using the city information from clean ones.
+    For example: "123 Main, Springfield OH 12123" will be correctly parsed iff 'SPRINGFIELD' is a city of another address.
+    The 'report_error' callback is called on all address strings that cannot be repaired
+    (other than 'report_error', all ParseErrors are ignored)
+    """
     errs: t.List[str] = []
     cities : t.Set[str] = set([])
     pre = 0

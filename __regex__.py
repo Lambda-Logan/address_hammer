@@ -26,17 +26,6 @@ def remove_punc(s:str, punc : t.Dict[int, t.Union[int, None]] = __punc__)->str:
 def opt(s:str)->str:
     return "(" + s + ")?"
 
-def pop(s:str, pat: t.Pattern[str]):
-    print(s, pat)
-    match: t.Optional[t.Match[str]] = re.search(pat, s)
-    if match!= None:
-        popped = match.group(0)
-        s = remove(re.compile(popped.strip()), s)
-        popped = normalize_whitespace(popped)
-    else:
-        popped = ""
-    return (s, normalize_whitespace(popped))
-
 def titleize(s:str)->str:
     return " ".join([word.capitalize() for word in s.lower().split()])
 
