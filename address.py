@@ -66,7 +66,7 @@ class Address(t.NamedTuple):
         for sk, sv in s.items():
             dv = d[sk]
             if sv != "" and sk != "orig" and sv != dv:
-                raise Exception("Failed at '{field}':\n\t\t\t{orig}\n\t\t\t{sv} != {dv}"\
+                raise Exception("Failed at '{field}':\n\t\t\t{orig}\n\t\t\t'{sv}' != '{dv}'"\
                                 .format(field = sk, 
                                         sv = sv, 
                                         dv = dv, 
@@ -163,7 +163,7 @@ example_addresses = [    Address(
             house_number  = "0",
             st_name  = "ROAD",
             st_suffix  = "RD",
-            st_NESW  = "",
+            st_NESW  = None,
             unit  = "",
             city  = "CITY",
             us_state  = "NY",
@@ -175,7 +175,7 @@ example_addresses = [    Address(
             st_name  = "HASKELL",
             st_suffix  = "LCK",
             st_NESW  = "S",
-            unit  = "",
+            unit  = None,
             city  = "RUSTY TOWN",
             us_state  = "NY",
             zip_code  = "12123",
@@ -210,7 +210,7 @@ example_addresses = [    Address(
         st_name  = "DIVISION",
         st_suffix  = "",
         st_NESW  = "N",
-        unit  = "",
+        unit  = None,
         city  = "ZAMALAKOO",
         us_state  = "MI",
         zip_code  = "00100",

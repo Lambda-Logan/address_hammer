@@ -149,23 +149,16 @@ class Parser:
     blank_parse: t.Optional[Parser]
     city: Fn[[str], t.Sequence[ParseResult]]
     st_name: Fn[[str], t.Sequence[ParseResult]]
-    required : t.Set[str] = set(["house_number", "st_name", "st_NESW", "st_suffix", "city", "us_state", "zip_code"])
+    required : t.Set[str] = set(["house_number", "st_name", "city", "us_state"])
     known_cities : t.List[str] = []
     known_cities_R : t.Optional[t.Pattern[str]] = None
-    def __init__(self, optionals:t.List[str] | str = [], known_cities:t.List[str]= []):
-        if "st_NESW" in optionals and "st_suffix" in optionals and len(known_cities) ==0:
-            raise ParserConfigError("'st_NESW' and 'st_suffix' can only be optional if the 'known_cities' kwarg is provided.")
-        if isinstance(optionals, str):
-            optionals = optionals.split()
+    def __init__(self,  known_cities:t.List[str]= []):
+        
         known_cities = list(filter(None, known_cities))
         if known_cities:
-            self.blank_parse = Parser(optionals=optionals,known_cities = [] )
+            self.blank_parse = Parser(known_cities = [])
         else:
             self.blank_parse = None
-        for opt in optionals:
-            if opt not in Parser.required:
-                raise ParserConfigError("{0} is not a vaild optional arg, they are \"st_NESW\", \"st_suffix\", \"city\", \"us_state\", \"zip_code\"".format(opt))
-        self.required = set([field for field in Parser.required if field not in optionals])
         normalized_cities = [self.__tokenize__(city) for city in known_cities]
         normalized_cities_B = [w.replace(" ", r"[\s_]") for w in normalized_cities]
         self.known_cities_R = re.compile(regex.or_(normalized_cities_B))
@@ -285,8 +278,7 @@ def smart_batch(p: Parser,
 
     #print("good:", pre)
     #print(cities)
-    p = Parser(optionals=[x for x in Parser.required if x not in p.required],
-               known_cities=p.known_cities + list(cities))
+    p = Parser(known_cities=p.known_cities + list(cities))
     fixed = 0
     for add in errs:
         try:
@@ -303,16 +295,14 @@ __incorrrectly_parsed_addresses__ = ["2222  Plymouth Rd Trlr 113  Ford MI 48000"
                                      "32222 W Boston Blvd # 7  Detroit MI 48000"]
 
 def test():
-    p = Parser(known_cities = ["Zamalakoo", "Grand Rapids"], 
-               optionals=["st_NESW", "st_suffix", ])
+    p = Parser(known_cities = ["Zamalakoo", "Grand Rapids"])
     from address import example_addresses
     for a in example_addresses:
         a.reparse_test(p)
-    zipless = Parser(optionals=["zip_code", "st_NESW"])
+    zipless = Parser()
     zipless("123 Qwerty St Asdf NY")
     p = Parser()
-    should_fail = [(Parser(known_cities=["Qwerty", "Yuiop", "Asdf", "Hjkl"],
-                            optionals = ["st_NESW"]), "123 Qwerty Hjkl NY 00000"),
+    should_fail = [(Parser(known_cities=["Qwerty", "Yuiop", "Asdf", "Hjkl"]), "123 Qwerty Hjkl NY 00000"),
                     (p, "123 Qwerty ST Hjkl NY 00000"),
                     (p, "123 Qwerty NW  Hjkl NY 00000")]
     for p, s in should_fail:
