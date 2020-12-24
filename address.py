@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing as t
 
 Fn = t.Callable
+Opt = t.Optional
 
 SOFT_COMPONENTS = ["st_suffix", "st_NESW", "unit"]
 HARD_COMPONENTS = ["house_number", "st_name", "city", "us_state", "zip_code"]
@@ -12,47 +13,52 @@ class InvalidAddressError(Exception):
     orig: str
     def __init__(self, orig:str):
         self.orig = orig
+T = t.TypeVar("T")
+
+def opt_sum(a: Opt[T], b: Opt[T])->Opt[T]:
+    "The monoidal sum of two optional values"
+    if a != None:
+        return a
+    return b
 
 class Address(t.NamedTuple):
     house_number: str
     st_name: str
-    st_suffix: str
-    st_NESW: str
-    unit: str
+    st_suffix: Opt[str]
+    st_NESW: Opt[str]
+    unit: Opt[str]
     city: str
     us_state: str
-    zip_code: str
+    zip_code: Opt[str]
     orig: str
 
     def __eq__(self, other: Address)-> bool:
         if self.__class__ != other.__class__:
             return False
         hards_match = self.__hard_components() == other.__hard_components()
-        
-        s_st_suffix, s_st_NESW, s_unit = self.__soft_components()
-        o_st_suffix, o_st_NESW, o_unit = other.__soft_components()
 
-        def match(s:str, o:str) ->bool:
-            return (not o) or (not s) or (o == s)
+        if not hards_match:
+            return False
 
-        return hards_match \
-               and match(s_st_suffix, o_st_suffix)\
-               and match(s_st_NESW, o_st_NESW)\
-               and match(s_unit, o_unit)
+        for s_soft, o_soft in zip(self.__soft_components(), 
+                                  other.__soft_components()):
+            if s_soft != None and o_soft != None:
+                if s_soft != o_soft:
+                    return False
 
+        return True
 
     def __hash__(self) -> int:
         return hash(self.__hard_components())
 
-    def __hard_components(self)->t.Tuple[str, str, str, str, str]:
+    def __hard_components(self)->t.Tuple[str, str, str, str]:
         return (self.house_number, 
                 self.st_name, 
                 self.city, 
-                self.us_state, 
-                self.zip_code)
+                self.us_state)
     
-    def __soft_components(self)->t.Tuple[str,str,str]:
-        return (self.st_suffix, self.st_NESW, self.unit)
+    def __soft_components(self)->t.Sequence[Opt[str]]:
+        return (self.st_suffix, self.st_NESW, self.unit, self.zip_code)
 
     def reparse_test(self, parse: Fn[[str], Address]):
         s: t.Dict[str, str] = self._asdict()
@@ -79,16 +85,26 @@ class Address(t.NamedTuple):
         o_st_suffix, o_st_NESW, o_unit = other.__soft_components()
 
         return self.replace(
-            **{"st_suffix":max(s_st_suffix, o_st_suffix, key=len), 
-               "st_NESW":max(s_st_NESW, o_st_NESW, key=len), 
-               "unit":max(s_unit, o_unit, key=len)})
+            **{"st_suffix":opt_sum(s_st_suffix, o_st_suffix), 
+               "st_NESW":opt_sum(s_st_NESW, o_st_NESW), 
+               "unit":opt_sum(s_unit, o_unit)})
                
     def jsonize(self)->t.Dict[str,str]:
         return self._asdict()
 
     def pretty(self)->str:
         from __regex__ import normalize_whitespace
-        l = sorted(self.st_NESW.split(), key = len)
+        as_dict = self._asdict()
+        softs = {"st_NESW":"",
+                 "st_suffix":"",
+                 "unit":"",
+                 "zip_code":""}
+
+        for k in softs.keys():
+            if as_dict[k] != None:
+                softs[k] = as_dict[k]
+
+        l = sorted(softs["st_NESW"].split(), key = len)
         if len(l) > 2:
             raise InvalidAddressError("NESW of " +self.orig)
         elif len(l) == 2:
@@ -99,7 +115,7 @@ class Address(t.NamedTuple):
             a,b = "", l[0]
         else: #len(l) == 0
             a, b = "", ""
-        u = self.unit.split()
+        u = softs["unit"].split()
         if len(u)==0:
             unit = ""
         elif len(u)==2:
@@ -111,12 +127,12 @@ class Address(t.NamedTuple):
                          self.house_number,
                          a,
                          " ".join([w.capitalize() for w in self.st_name.split()]),
-                         self.st_suffix.capitalize(),
+                         softs["st_suffix"].capitalize(),
                          b,
                          unit,
                          " ".join([w.capitalize() for w in self.city.split()]),
                          self.us_state.upper(),
-                         self.zip_code
+                         softs["zip_code"]
                          ]))
 
 
@@ -204,11 +220,12 @@ def test():
     for a in example_addresses:
 
         assert a == a
-        soft_sames: t.List[t.Tuple[str,str]] = [("", "X"), ("X", "")]
-        sames: t.List[t.Tuple[str,str]]      = [("", ""), ("X","X")]
+        soft_sames: t.List[t.Tuple[Opt[str],Opt[str]]] = [(None, "X"),  ("X", None)]
+        sames: t.List[t.Tuple[Opt[str],Opt[str]]]      = [(None, None), ("X","X")]
 
         for x, y in soft_sames + sames:
             for soft in SOFT_COMPONENTS:
+                #print(x,"and", y)
                 assert(a.replace(**{soft:x}) == a.replace(**{soft:y})) 
                 assert(a.replace(**{soft:"X"}) != a.replace(**{soft:"Y"}))
 
