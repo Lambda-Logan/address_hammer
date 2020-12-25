@@ -5,8 +5,8 @@ import typing as t
 Fn = t.Callable
 Opt = t.Optional
 
-SOFT_COMPONENTS = ["st_suffix", "st_NESW", "unit"]
-HARD_COMPONENTS = ["house_number", "st_name", "city", "us_state", "zip_code"]
+SOFT_COMPONENTS = ["st_suffix", "st_NESW", "unit", "zip_code"]
+HARD_COMPONENTS = ["house_number", "st_name", "city", "us_state"]
 
 
 class InvalidAddressError(Exception):
@@ -65,7 +65,7 @@ class Address(t.NamedTuple):
         d: t.Dict[str, str] = parse(self.orig)._asdict()
         for sk, sv in s.items():
             dv = d[sk]
-            if sv != "" and sk != "orig" and sv != dv:
+            if sk != "orig" and sv != dv:
                 raise Exception("Failed at '{field}':\n\t\t\t{orig}\n\t\t\t'{sv}' != '{dv}'"\
                                 .format(field = sk, 
                                         sv = sv, 
@@ -79,15 +79,14 @@ class Address(t.NamedTuple):
         raise NotImplementedError
 
     def combine_soft(self, other: Address)->Address:
-        if self.__hard_components() != other.__hard_components():
+        if self != other:
             raise Exception("cannot combine_soft two different addresses.")
-        s_st_suffix, s_st_NESW, s_unit = self.__soft_components()
-        o_st_suffix, o_st_NESW, o_unit = other.__soft_components()
-
+        # by our definition of equality,
+        # there can only be at most one non-None field of each opt-valued pair
         return self.replace(
-            **{"st_suffix":opt_sum(s_st_suffix, o_st_suffix), 
-               "st_NESW":opt_sum(s_st_NESW, o_st_NESW), 
-               "unit":opt_sum(s_unit, o_unit)})
+            **{"st_suffix":opt_sum(self.st_suffix, other.st_suffix), 
+               "st_NESW":opt_sum(self.st_NESW, other.st_NESW), 
+               "unit":opt_sum(self.unit, other.unit)})
                
     def jsonize(self)->t.Dict[str,str]:
         return self._asdict()
@@ -134,7 +133,7 @@ class Address(t.NamedTuple):
                          self.us_state.upper(),
                          softs["zip_code"]
                          ]))
-
+    
 
 example_addresses = [    Address(    
         house_number  = "3710",
@@ -164,7 +163,7 @@ example_addresses = [    Address(
             st_name  = "ROAD",
             st_suffix  = "RD",
             st_NESW  = None,
-            unit  = "",
+            unit  = None,
             city  = "CITY",
             us_state  = "NY",
             zip_code  = "12123",
@@ -208,7 +207,7 @@ example_addresses = [    Address(
     Address(    
         house_number  = "0",
         st_name  = "DIVISION",
-        st_suffix  = "",
+        st_suffix  = None,
         st_NESW  = "N",
         unit  = None,
         city  = "ZAMALAKOO",
@@ -216,7 +215,9 @@ example_addresses = [    Address(
         zip_code  = "00100",
         orig = "0 N Division Zamalakoo MI 00100")]
 
+
 def test():
+
     for a in example_addresses:
 
         assert a == a

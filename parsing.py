@@ -4,6 +4,7 @@ import re
 
 #from re import split
 from address import Address
+import address
 import __regex__ as regex
 from __zipper__ import Zipper, GenericInput, EndOfInputError
 
@@ -77,7 +78,7 @@ class AddressComponent(t.NamedTuple):
     def then(self, cont: AddressComponent)->AddressComponent:
         return self._replace(cont=cont)
 
-st_suffices: t.List[str] = ["ALY", "ANX", "ARC", "AVE", "BYU", "BCH", "BND", "BLF", "BLFS", "BTM", "BLVD", "BR", "BRG", "BRK", "BRKS", "BG", "BGS", "BYP", "CP", "CYN", "CPE", "CSWY", "CTR", "CTRS", "CIR", "CIRS", "CLF", "CLFS", "CLB", "CMN", "CMNS", "COR", "CORS", "CRSE", "CT", "CTS", "CV", "CVS", "CRK", "CRES", "CRST", "XING", "XRD", "XRDS", "CURV", "DL", "DM", "DV", "DR", "DRS", "EST", "ESTS", "EXPY", "EXT", "EXTS", "FALL", "FLS", "FRY", "FLD", "FLDS", "FLT", "FLTS", "FRD", "FRDS", "FRST", "FRG", "FRGS", "FRK", "FRKS", "FT", "FWY", "GDN", "GDNS", "GTWY", "GLN", "GLNS", "GRN", "GRNS", "GRV", "GRVS", "HBR", "HBRS", "HVN", "HTS", "HWY", "HL", "HLS", "HOLW", "INLT", "IS", "ISS", "ISLE", "JCT", "JCTS", "KY", "KYS", "KNL ", "KNLS", "LK", "LKS", "LAND", "LNDG", "LN", "LGT", "LGTS", "LF", "LCK", "LCKS", "LDG", "LOOP", "MALL", "MNR", "MNRS", "MDW", "MDWS", "MEWS", "ML", "MLS", "MSN", "MTWY", "MT", "MTN", "MTNS", "NCK", "ORCH", "OVAL", "OPAS", "PARK", "PARK", "PKWY", "PKWY", "PASS", "PSGE", "PATH", "PIKE", "PNE ", "PNES", "PL", "PLN", "PLNS", "PLZ", "PT", "PTS", "PRT", "PRTS", "PR", "RADL", "RAMP", "RNCH", "RPD", "RPDS", "RST", "RDG", "RDGS", "RIV", "RD", "RDS", "RTE", "ROW", "RUE", "RUN", "SHL", "SHLS", "SHR", "SHRS", "SKWY", "SPG", "SPGS", "SPUR", "SPUR", "SQ", "SQS", "STA", "STRA", "STRM", "ST", "STS", "SMT", "TER", "TRWY", "TRCE", "TRAK", "TRFY", "TRL", "TRLR", "TUNL", "TPKE", "UPAS", "UN", "UNS", "VLY", "VLYS", "VIA", "VW", "VWS", "VLG", "VLGS", "VL", "VIS", "WALK", "WALK", "WALL", "WAY", "WAYS", "WL", "WLS"]
+st_suffices: t.List[str] = ["ALY", "ANX", "ARC", "AVE", "BYU", "BCH", "BND", "BLF", "BLFS", "BTM", "BLVD", "BR", "BRG", "BRK", "BRKS", "BG", "BGS", "BYP", "CP", "CYN", "CPE", "CSWY", "CTR", "CTRS", "CIR", "CIRS", "CLF", "CLFS", "CLB", "CMN", "CMNS", "COR", "CORS", "CRSE", "CT", "CTS", "CV", "CVS", "CRK", "CRES", "CRST", "XING", "XRD", "XRDS", "CURV", "DL", "DM", "DV", "DR", "DRS", "EST", "ESTS", "EXPY", "EXT", "EXTS", "FALL", "FLS", "FRY", "FLD", "FLDS", "FLT", "FLTS", "FRD", "FRDS", "FRST", "FRG", "FRGS", "FRK", "FRKS", "FT", "FWY", "GDN", "GDNS", "GTWY", "GLN", "GLNS", "GRN", "GRNS", "GRV", "GRVS", "HBR", "HBRS", "HVN", "HTS", "HWY", "HL", "HLS", "HOLW", "INLT", "IS", "ISS", "ISLE", "JCT", "JCTS", "KY", "KYS", "KNL ", "KNLS", "LK", "LKS", "LAND", "LNDG", "LN", "LGT", "LGTS", "LF", "LCK", "LCKS", "LDG", "LOOP", "MALL", "MNR", "MNRS", "MDW", "MDWS", "MEWS", "ML", "MLS", "MSN", "MTWY", "MT", "MTN", "MTNS", "NCK", "ORCH", "OVAL", "OPAS", "PARK", "PARK", "PKWY", "PKWY", "PASS", "PSGE", "PATH", "PIKE", "PNE ", "PNES", "PL", "PLN", "PLNS", "PLZ", "PT", "PTS", "PRT", "PRTS", "PR", "RADL", "RAMP", "RNCH", "RPD", "RPDS", "RST", "RDG", "RDGS", "RIV", "RD", "RDS", "RTE", "ROW", "RUE", "RUN", "SHL", "SHLS", "SHR", "SHRS", "SKWY", "SPG", "SPGS", "SPUR", "SPUR", "SQ", "SQS", "STA", "STRA", "STRM", "ST", "STS", "SMT", "TER", "TRWY", "TRCE", "TRAK", "TRFY", "TRL", "TUNL", "TPKE", "UPAS", "UN", "UNS", "VLY", "VLYS", "VIA", "VW", "VWS", "VLG", "VLGS", "VL", "VIS", "WALK", "WALK", "WALL", "WAY", "WAYS", "WL", "WLS"]
 st_suffix_R = re.compile(regex.or_(st_suffices))
 
 st_NESWs: t.List[str] = ["NE", "NW", "SE", "SW", "N", "S", "E", "W"]
@@ -135,7 +136,12 @@ _ZIP_CODE = AddressComponent(
                 compiled_pattern=re.compile(r"\d{5}")).arrow_parse()
 
 address_midpoint_R = re.compile(regex.or_(st_suffices + st_NESWs + unit_types))
-
+def str_to_opt(s:t.Optional[str])->t.Optional[str]:
+    if s == None:
+        return None
+    if not s.split():
+        return None
+    return s
 def city_repl(s:t.Match[str])->str:
     return " "+s.group(0).strip().replace(" ", "_")+" "
 Zip = Zipper[str, str]
@@ -149,7 +155,8 @@ class Parser:
     blank_parse: t.Optional[Parser]
     city: Fn[[str], t.Sequence[ParseResult]]
     st_name: Fn[[str], t.Sequence[ParseResult]]
-    required : t.Set[str] = set(["house_number", "st_name", "city", "us_state"])
+    required : t.Set[str] = set(address.HARD_COMPONENTS)
+    optional: t.Set[str] = set(address.SOFT_COMPONENTS)
     known_cities : t.List[str] = []
     known_cities_R : t.Optional[t.Pattern[str]] = None
     def __init__(self,  known_cities:t.List[str]= []):
@@ -216,8 +223,10 @@ class Parser:
             z:Zip = z.takewhile(self.city, **p)\
                 .consume_with(_US_STATE)
 
-            if "zip_code" in self.required:
+            try:
                 z = z.consume_with(_ZIP_CODE)
+            except (EndOfInputError, ParseError):
+                pass
 
         except EndOfInputError as e:
             raise EndOfAddressError(_s, "unknown")
@@ -242,12 +251,15 @@ class Parser:
         if checked:
             for req in self.required:
                 if not d[req]:
-                    msg_b = """\nIf you want to allow this, try passing creating the Parser with the optional kwarg, i.e \n p =  Parser(optional=[..., "{req}"])
-                    """.format(req=req)
-                    raise ParseError(_s, "Could not identify "+req+msg_b)
+                    #msg_b = """\nIf you want to allow this, try passing creating the Parser with the optional kwarg, i.e \n p =  Parser(optional=[..., "{req}"])
+                    #""".format(req=req)
+                    raise ParseError(_s, "Could not identify "+req)
 
         d["unit"] = [n.replace("#", "") for n in d["unit"]]
-        return Address(orig=_s, **{field : " ".join(values) for field, values in d.items()})
+        str_d: t.Dict[str, t.Optional[str]] = {field : " ".join(values) for field, values in d.items()}
+        for opt in Parser.optional:
+            str_d[opt] = str_to_opt(str_d[opt])
+        return Address(orig=_s, **str_d)
 
 
 def smart_batch(p: Parser,
@@ -289,36 +301,44 @@ def smart_batch(p: Parser,
             report_error(e, add)
     #print("fixed:", fixed)
     
-__incorrrectly_parsed_addresses__ = ["2222  Plymouth Rd Trlr 113  Ford MI 48000", 
-                                     "22222 Joy Rd Trlr 105  Red MI 48000",
-                                     "22222  Stoepel St # 0  Detroit MI 48000",
-                                     "32222 W Boston Blvd # 7  Detroit MI 48000"]
+__difficult_addresses__ = ["000  Plymouth Rd Trlr 113  Ford MI 48000", 
+                                     "0 Joy Rd Trlr 105  Red MI 48000",
+                                     "0  Stoepel St #0  Detroit MI 48000",
+                                     "0 W Boston Blvd # 7  Detroit MI 48000"]
 
 def test():
+    p = Parser(known_cities= ["city"])
+    adds = ["0 Street apt 5 St City MI", 
+            "0 Street NE City MI",
+            "0 Street Apt 3 City MI",
+            "0 Street Apt 0 City MI",
+            "1 Street City MI"]
+    d = {}
+    for add in adds:
+        a = p(add)
+        l = d.get(a,[])
+        l.append(a)
+        d[a] = l
+    #print([[a.pretty() for a in a_s] for a_s in d.values()])
+    #print([a.pretty() for a in Address.merge_duplicates(map(p, adds))])
     p = Parser(known_cities = ["Zamalakoo", "Grand Rapids"])
+    for a in __difficult_addresses__:
+        p(a)
+
     from address import example_addresses
     for a in example_addresses:
         a.reparse_test(p)
     zipless = Parser()
     zipless("123 Qwerty St Asdf NY")
     p = Parser()
-    should_fail = [(Parser(known_cities=["Qwerty", "Yuiop", "Asdf", "Hjkl"]), "123 Qwerty Hjkl NY 00000"),
-                    (p, "123 Qwerty ST Hjkl NY 00000"),
-                    (p, "123 Qwerty NW  Hjkl NY 00000")]
+    should_fail = [(Parser(known_cities=["Qwerty", "Yuiop", "Asdf", "Hjkl"]), "123 Qwerty Hjkl NY 00000")]
     for p, s in should_fail:
         try:
             p(s)
-            raise Exception("Failed test " + s)
+            raise Exception("Should have failed test " + s)
         except (ParseError, EndOfInputError):
             pass
-    invalid_configs = [{"optionals":["st_nesw"]},
-                       {"optionals":["st_NESW", "st_suffix"]}]
-    for ic in invalid_configs:
-        try:
-            Parser(**ic)
-            raise Exception("Test failed: allowed an illegal optional argument")
-        except ParserConfigError:
-            pass
+    
 
 
 
