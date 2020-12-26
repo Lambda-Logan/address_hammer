@@ -313,12 +313,6 @@ def test():
             "0 Street Apt 3 City MI",
             "0 Street Apt 0 City MI",
             "1 Street City MI"]
-    d = {}
-    for add in adds:
-        a = p(add)
-        l = d.get(a,[])
-        l.append(a)
-        d[a] = l
     #print([[a.pretty() for a in a_s] for a_s in d.values()])
     #print([a.pretty() for a in Address.merge_duplicates(map(p, adds))])
     p = Parser(known_cities = ["Zamalakoo", "Grand Rapids"])

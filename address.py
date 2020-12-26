@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import typing as t
-
+from itertools import chain
+join = chain.from_iterable
 Fn = t.Callable
 Opt = t.Optional
 
@@ -21,6 +22,7 @@ def opt_sum(a: Opt[T], b: Opt[T])->Opt[T]:
         return a
     return b
 
+
 class Address(t.NamedTuple):
     house_number: str
     st_name: str
@@ -35,13 +37,13 @@ class Address(t.NamedTuple):
     def __eq__(self, other: Address)-> bool:
         if self.__class__ != other.__class__:
             return False
-        hards_match = self.__hard_components() == other.__hard_components()
+        hards_match = self.hard_components() == other.hard_components()
 
         if not hards_match:
             return False
 
-        for s_soft, o_soft in zip(self.__soft_components(), 
-                                  other.__soft_components()):
+        for s_soft, o_soft in zip(self.soft_components(), 
+                                  other.soft_components()):
             if s_soft != None and o_soft != None:
                 if s_soft != o_soft:
                     return False
@@ -49,15 +51,16 @@ class Address(t.NamedTuple):
         return True
 
     def __hash__(self) -> int:
-        return hash(self.__hard_components())
+        raise NotImplementedError("TODO, describe why Address is not hashable")
 
-    def __hard_components(self)->t.Tuple[str, str, str, str]:
+
+    def hard_components(self)->t.Tuple[str, str, str, str]:
         return (self.house_number, 
                 self.st_name, 
                 self.city, 
                 self.us_state)
     
-    def __soft_components(self)->t.Sequence[Opt[str]]:
+    def soft_components(self)->t.Sequence[Opt[str]]:
         return (self.st_suffix, self.st_NESW, self.unit, self.zip_code)
 
     def reparse_test(self, parse: Fn[[str], Address]):
@@ -86,7 +89,8 @@ class Address(t.NamedTuple):
         return self.replace(
             **{"st_suffix":opt_sum(self.st_suffix, other.st_suffix), 
                "st_NESW":opt_sum(self.st_NESW, other.st_NESW), 
-               "unit":opt_sum(self.unit, other.unit)})
+               "unit":opt_sum(self.unit, other.unit),
+               "zip_code":opt_sum(self.zip_code, other.zip_code)})
                
     def jsonize(self)->t.Dict[str,str]:
         return self._asdict()
@@ -133,7 +137,106 @@ class Address(t.NamedTuple):
                          self.us_state.upper(),
                          softs["zip_code"]
                          ]))
-    
+    class Get:
+        house_number: Fn[[Address], str] = lambda a: a.house_number
+        st_name: Fn[[Address], str] = lambda a: a.st_name
+        st_suffix: Fn[[Address], Opt[str]] = lambda a: a.st_suffix
+        st_NESW: Fn[[Address], Opt[str]] = lambda a: a.st_NESW
+        unit: Fn[[Address], Opt[str]] = lambda a: a.unit
+        us_state: Fn[[Address], str] = lambda a: a.us_state
+        zip_code: Fn[[Address], Opt[str]] = lambda a: a.zip_code
+        orig: Fn[[Address], str] = lambda a: a.orig
+        pretty: Fn[[Address], str] = lambda a: a.pretty()
+
+class HashableAddress(Address):
+    def __hash__(self) -> int:
+        return hash((self.hard_components(), self.soft_components()))
+
+class HashableFactory(t.NamedTuple):
+    fill_in_info: Fn[[Address], t.List[HashableAddress]]
+    fix_by_hand: t.List[t.List[Address]]
+    def __call__(self, a:Address)->t.List[HashableAddress]:
+        return self.fill_in_info(a)
+
+    def hashable_addresses(self, addresses: t.Iterable[Address])->t.Iterable[HashableAddress]:
+        return join(map(self, addresses))
+
+    @staticmethod
+    def from_all_addresses(addresses: t.Iterable[Address])->HashableFactory:
+        """
+        Each address is mapped to a list of each with more complete (but incompatible) soft elements
+        """
+        addresses = list(addresses)
+        def new_dict()->t.Dict[str, t.Set[Opt[str]]]:
+            return {soft:set([]) for soft in SOFT_COMPONENTS}
+
+        d : t.Dict[t.Sequence[str], t.Dict[str, t.Set[Opt[str]]]] = {}
+        for a in addresses:
+            hards = a.hard_components()
+            softs = d.get(hards,new_dict())
+            a_dict = a._asdict()
+            for k,v in a_dict.items():
+                if k in softs:
+                    softs[k].add(v)
+            d[hards] = softs
+
+        fix_by_hand = {}
+        def is_ambig(softs:t.Dict[str, t.Set[Opt[str]]])->bool:
+            l = [list(filter(None, v)) for k, v in softs.items() if k != "unit"]
+            print(k)
+            m = max(map(len, l))
+            print("M", m)
+            return m > 1
+        for a in addresses:
+            hards = a.hard_components()
+            softs = d[hards]
+            if is_ambig(softs): #cannot have mismatching st_suffix,st_NESW or zip_code
+                similar_addresses = fix_by_hand.get(hards, [])
+                similar_addresses.append(a)
+                fix_by_hand[hards] = similar_addresses
+        
+        def fix(a:Address)->t.List[HashableAddress]:
+            ret = []
+            hards = a.hard_components()
+            softs = d.get(hards, None)
+            if not softs:
+                return []
+            if is_ambig(softs): #cannot have mismatching st_suffix,st_NESW or zip_code
+                return []
+            else:
+                _softs = {}
+                for label, soft in softs.items():
+                    v = list(softs[label])
+                    if not v:
+                        _softs[label] = None
+                    else:
+                        _softs[label] = v[0]
+                units = list(filter(None, softs["unit"]))
+
+                if not units:
+                    units = [None]
+                for unit in units:
+                    ret.append(
+                        HashableAddress(
+                            house_number=a.house_number,
+                            st_name=a.st_name,
+                            st_suffix=opt_sum(a.st_suffix, _softs["st_suffix"]),
+                            st_NESW=opt_sum(a.st_NESW, _softs["st_NESW"]),
+                            unit=opt_sum(a.unit, unit),
+                            city=a.city,
+                            us_state=a.us_state,
+                            zip_code=opt_sum(a.zip_code, _softs["zip_code"]),
+                            orig = a.orig))
+            return ret
+        return HashableFactory(fill_in_info=fix, 
+                               fix_by_hand=list(fix_by_hand.values()))
+
+
+def merge_duplicates(addresses: t.Iterable[Address])->t.Set[HashableAddress]:
+    addresses = list(addresses)
+    f = HashableFactory.from_all_addresses(addresses)
+    return set(join(map(f, addresses)))
+
 
 example_addresses = [    Address(    
         house_number  = "3710",
@@ -217,7 +320,21 @@ example_addresses = [    Address(
 
 
 def test():
-
+    from parsing import Parser
+    p = Parser(known_cities=["City"])
+    ambigs = [
+        "001 Street City MI",
+        "001 E Street City MI",
+        #"001 W Street City MI",
+        "001 Street St City MI",
+        "001 Street Apt 0 City MI",
+        "0 Main St Smallville AZ",
+        "0 Main Rd Smallville AZ"
+    ]
+    print(HashableFactory.from_all_addresses(map(p, ambigs)).fix_by_hand)
+    m = merge_duplicates(map(p, ambigs))
+    print([a.pretty() for a in m])
+    print(m)
     for a in example_addresses:
 
         assert a == a
