@@ -183,9 +183,8 @@ class HashableFactory(t.NamedTuple):
         fix_by_hand = {}
         def is_ambig(softs:t.Dict[str, t.Set[Opt[str]]])->bool:
             l = [list(filter(None, v)) for k, v in softs.items() if k != "unit"]
-            print(k)
             m = max(map(len, l))
-            print("M", m)
+
             return m > 1
         for a in addresses:
             hards = a.hard_components()
@@ -322,19 +321,18 @@ example_addresses = [    Address(
 def test():
     from parsing import Parser
     p = Parser(known_cities=["City"])
-    ambigs = [
+    ambigs_1 = [
         "001 Street City MI",
         "001 E Street City MI",
         #"001 W Street City MI",
         "001 Street St City MI",
         "001 Street Apt 0 City MI",
-        "0 Main St Smallville AZ",
-        "0 Main Rd Smallville AZ"
+        "001 Street Apt 1 City MI",
     ]
-    print(HashableFactory.from_all_addresses(map(p, ambigs)).fix_by_hand)
-    m = merge_duplicates(map(p, ambigs))
-    print([a.pretty() for a in m])
-    print(m)
+    ambigs_2 = ["0 Main St Smallville AZ",
+                "0 Main Rd Smallville AZ"]
+    assert 2 == len(merge_duplicates(map(p,ambigs_1)))
+    assert 2 == len(HashableFactory.from_all_addresses(map(p, ambigs_2)).fix_by_hand[0])
     for a in example_addresses:
 
         assert a == a
