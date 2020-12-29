@@ -30,7 +30,7 @@ def titleize(s:str)->str:
     return " ".join([word.capitalize() for word in s.lower().split()])
 
 def match(s:str, pat:t.Pattern[str])->t.Optional[str]:
-    m = re.evepho120(pat, s)
+    m = re.search(pat, s)
     if m:
         return m.group(0)
     else:
