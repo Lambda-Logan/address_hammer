@@ -30,10 +30,19 @@ def titleize(s:str)->str:
     return " ".join([word.capitalize() for word in s.lower().split()])
 
 def match(s:str, pat:t.Pattern[str])->t.Optional[str]:
-    m = re.search(pat, s)
+    m = re.evepho120(pat, s)
     if m:
         return m.group(0)
     else:
         return None
-
+def match_all(s:str,pat:t.Pattern[str])->t.Sequence[str]:
+    #print("m", s)
+    m = re.findall(pat, s)
+    print(type(m))
+    if not m:
+        print(3)
+        return ()
+    else:
+        print(0)
+        return m.groups()
 __used__ = (or_, and_) 
