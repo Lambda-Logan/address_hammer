@@ -34,8 +34,12 @@ class Address(t.NamedTuple):
     zip_code: Opt[str]
     orig: str
 
+    def __hash__(self) -> int:
+        return hash((self.hard_components(), self.soft_components()))
+
     def __eq__(self, other: Address)-> bool:
-        if self.__class__ != other.__class__:
+        if self.__class__ != other.__class__: 
+            #don't use isinstance because equality is not defined for Address, RawAddress
             return False
         hards_match = self.hard_components() == other.hard_components()
 
@@ -49,10 +53,6 @@ class Address(t.NamedTuple):
                     return False
 
         return True
-
-    def __hash__(self) -> int:
-        raise NotImplementedError("TODO, describe why Address is not hashable")
-
 
     def hard_components(self)->t.Tuple[str, str, str, str]:
         return (self.house_number, 
@@ -115,7 +115,11 @@ class Address(t.NamedTuple):
             if len(a)>1 and len(b)>1:
                 raise InvalidAddressError("NESW of " +self.orig)
         elif len(l) == 1:
-            a,b = "", l[0]
+            ll = l[0]
+            if len(ll)==1:
+                a,b = ll, ""
+            else:
+                a,b = "", ll
         else: #len(l) == 0
             a, b = "", ""
         u = softs["unit"].split()
@@ -143,22 +147,34 @@ class Address(t.NamedTuple):
         st_suffix: Fn[[Address], Opt[str]] = lambda a: a.st_suffix
         st_NESW: Fn[[Address], Opt[str]] = lambda a: a.st_NESW
         unit: Fn[[Address], Opt[str]] = lambda a: a.unit
+        city: Fn[[Address], str] = lambda a: a.city
         us_state: Fn[[Address], str] = lambda a: a.us_state
         zip_code: Fn[[Address], Opt[str]] = lambda a: a.zip_code
         orig: Fn[[Address], str] = lambda a: a.orig
         pretty: Fn[[Address], str] = lambda a: a.pretty()
 
-class HashableAddress(Address):
+
+class RawAddress(Address):
+    """
+    A RawAddress is what is produced by a Parser.
+    Because it might have incomplete or missing fields, it is not hashable
+    """
     def __hash__(self) -> int:
-        return hash((self.hard_components(), self.soft_components()))
+        raise NotImplementedError("RawAddress is not hashable")
+
+
+
+
+
+
 
 class HashableFactory(t.NamedTuple):
-    fill_in_info: Fn[[Address], t.List[HashableAddress]]
+    fill_in_info: Fn[[Address], t.List[Address]]
     fix_by_hand: t.List[t.List[Address]]
-    def __call__(self, a:Address)->t.List[HashableAddress]:
+    def __call__(self, a:Address)->t.List[Address]:
         return self.fill_in_info(a)
 
-    def hashable_addresses(self, addresses: t.Iterable[Address])->t.Iterable[HashableAddress]:
+    def hashable_addresses(self, addresses: t.Iterable[Address])->t.Iterable[Address]:
         return join(map(self, addresses))
 
     @staticmethod
@@ -194,7 +210,7 @@ class HashableFactory(t.NamedTuple):
                 similar_addresses.append(a)
                 fix_by_hand[hards] = similar_addresses
         
-        def fix(a:Address)->t.List[HashableAddress]:
+        def fix(a:Address)->t.List[Address]:
             ret = []
             hards = a.hard_components()
             softs = d.get(hards, None)
@@ -211,12 +227,7 @@ class HashableFactory(t.NamedTuple):
                     else:
                         _softs[label] = v[0]
                 units = list(filter(None, softs["unit"]))
-
-                if not units:
-                    units = [None]
-                for unit in units:
-                    ret.append(
-                        HashableAddress(
+                with_unit: Fn[[Opt[str]], Address] = lambda unit: Address(
                             house_number=a.house_number,
                             st_name=a.st_name,
                             st_suffix=opt_sum(a.st_suffix, _softs["st_suffix"]),
@@ -225,13 +236,19 @@ class HashableFactory(t.NamedTuple):
                             city=a.city,
                             us_state=a.us_state,
                             zip_code=opt_sum(a.zip_code, _softs["zip_code"]),
-                            orig = a.orig))
+                            orig = a.orig)
+                if a.unit != None:
+                    return [with_unit(a.unit)]
+                if not units:
+                    units = [None]
+                for unit in units:
+                    ret.append(with_unit(unit))
             return ret
         return HashableFactory(fill_in_info=fix, 
                                fix_by_hand=list(fix_by_hand.values()))
 
 
-def merge_duplicates(addresses: t.Iterable[Address])->t.Set[HashableAddress]:
+def merge_duplicates(addresses: t.Iterable[Address])->t.Set[Address]:
     addresses = list(addresses)
     f = HashableFactory.from_all_addresses(addresses)
     return set(join(map(f, addresses)))

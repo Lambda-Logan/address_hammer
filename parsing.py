@@ -3,7 +3,7 @@ import typing as t
 import re
 
 #from re import split
-from address import Address
+from address import RawAddress
 import address
 import __regex__ as regex
 from __zipper__ import Zipper, GenericInput, EndOfInputError
@@ -22,6 +22,11 @@ class ParseError(Exception):
         self.reason = reason
 
 class EndOfAddressError(ParseError):
+    """
+    The address parser unexpectedly reached the end of the given string.
+    This is usually cause by either the 'st_name' or the 'city' consumed the entire string.
+    If you get this error, you are probably missing either (a) both the st_suffix and the st_NESW or (b) a us_state.
+    """
     def __init__(self, orig: str, reason: str):
         super(ParseError, self).__init__(reason + ": end of input of " + orig)
 
@@ -71,7 +76,7 @@ class AddressComponent(t.NamedTuple):
                     return []
                 raise ParseError(s, self.label)
             p_r = ParseResult(value=m,label=self.label)
-            #print(p_r)
+            print(p_r)
             return [p_r]
         return ap
 
@@ -147,10 +152,31 @@ def city_repl(s:t.Match[str])->str:
 Zip = Zipper[str, str]
 class Parser:
     """
-    A callable address parser.
+    A callable address parser. 
+    In general, prefer using the Hammer class instead of calling the parser directly.
+    Parser does not correct typos or auto-infer street suffices or dirrectionals.
+    Parser also has the limitation that if the address's city is not in known_cities, 
+    it will need some kind of identifier to separate the street name and the city name (such as st_suffix, st_NESW or a unit.)
 
-    'p = Parser()' will by default require "st_NESW", "st_suffix" and "zip_code"
-    (^ this can be changed via the 'optionals' parameter)
+        p = Parser(known_cities="Houston Dallas".split())
+        
+    'p' WILL parse the following addresses:
+
+        "123 Straight Houston TX"        # no identifier bewteen street and city (BUT a known city)
+        
+        "123 8th Ave NE Ste A Dallas TX" # nothing to see here, normal address
+        
+        "123 Dallas Rd Houston TX"       # the street would be recognized as a city (BUT fortunately there is an identifier bewteen the street and city)
+    
+
+
+    ... but will NOT parse these:
+
+        "123 Straight Houuston TX" #typo
+
+        "123 Straight Austin TX"   #(1) unknown city and (2) no identifier bewteen street and city
+        
+        "123 Dallas Houston TX"    # # the street is recognized as a city (and unfortunately there is not an identifier bewteen the street and city)
     """
     blank_parse: t.Optional[Parser]
     city: Fn[[str], t.Sequence[ParseResult]]
@@ -197,13 +223,14 @@ class Parser:
         s =  " ".join([regex.titleize(word) for word in s.split("_")] )
         #print(s)
         return s
-    def __call__(self, _s: str, checked:bool=True)->Address:
+    def __call__(self, _s: str, checked:bool=True)->RawAddress:
         if self.blank_parse != None:
             try:
                 return self.blank_parse(_s, checked=checked)
             except:
                 pass
         s = self.__tokenize__(_s)
+        
         if self.known_cities_R:
             s = re.sub(self.known_cities_R, city_repl, s) 
             #print(s)
@@ -259,12 +286,12 @@ class Parser:
         str_d: t.Dict[str, t.Optional[str]] = {field : " ".join(values) for field, values in d.items()}
         for opt in Parser.optional:
             str_d[opt] = str_to_opt(str_d[opt])
-        return Address(orig=_s, **str_d)
+        return RawAddress(orig=_s, **str_d)
 
 
 def smart_batch(p: Parser,
                adds:t.Iterable[str],
-               report_error: Fn[[Exception, str], None] = lambda e,s: None) -> t.Iterable[Address]:
+               report_error: Fn[[ParseError, str], None] = lambda e,s: None) -> t.Iterable[RawAddress]:
     """
     This function takes an iter of address strings and tries to repair dirty addresses by using the city information from clean ones.
     For example: "123 Main, Springfield OH 12123" will be correctly parsed iff 'SPRINGFIELD' is a city of another address.
@@ -297,7 +324,7 @@ def smart_batch(p: Parser,
             a = p(add)
             fixed += 1
             yield a
-        except Exception as e:
+        except ParseError as e:
             report_error(e, add)
     #print("fixed:", fixed)
     
@@ -314,7 +341,7 @@ def test():
             "0 Street Apt 0 City MI",
             "1 Street City MI"]
     #print([[a.pretty() for a in a_s] for a_s in d.values()])
-    #print([a.pretty() for a in Address.merge_duplicates(map(p, adds))])
+    #print([a.pretty() for a in RawAddress.merge_duplicates(map(p, adds))])
     p = Parser(known_cities = ["Zamalakoo", "Grand Rapids"])
     for a in __difficult_addresses__:
         p(a)
