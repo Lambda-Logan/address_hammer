@@ -50,6 +50,7 @@ class Hammer:
     __repair_city__: Fn[[str], str]
     parse_errors: t.List[t.Tuple[ParseError, str]]
     ambigous_address_groups: t.List[t.List[Address]]
+    __addresses__: t.Set[Address]
     __hashable_factory__: HashableFactory
     def __init__(self, 
                  input_addresses: t.Iterable[t.Union[str, Address]],
@@ -117,6 +118,7 @@ class Hammer:
         self.p = Parser(known_cities=list(city_bag.keys()))
         self.__hashable_factory__ = HashableFactory.from_all_addresses(addresses)
         self.ambigous_address_groups = self.__hashable_factory__.fix_by_hand
+        self.__addresses__ = set(join(map(self.zero_or_more, addresses)))
 
     def fix_typos(self, a:Address)->Address:
         return a.replace(city=self.__repair_city__(a.city),
@@ -143,7 +145,13 @@ class Hammer:
             """+a.pretty() + "\n"
             warnings.warn(msg)
             return adds[0].replace(unit=None)
-    
+            
+    def __len__(self)->int:
+        return len(self.__addresses__)
+
+    def __iter__(self)->t.Iterable[Address]:
+        return iter(self.__addresses__)
+
     def zero_or_more(self, a: t.Union[Address, str]) -> t.List[Address]:
         if isinstance(a, str):
             a = self.p(a)
