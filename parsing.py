@@ -76,7 +76,7 @@ class AddressComponent(t.NamedTuple):
                     return []
                 raise ParseError(s, self.label)
             p_r = ParseResult(value=m,label=self.label)
-            print(p_r)
+            #print(p_r)
             return [p_r]
         return ap
 
@@ -238,7 +238,7 @@ class Parser:
         p = {"ex_types":tuple([ParseError])} #TODO make Zipper.takewhile ignore exceptions after 1 consumed???
         try:
             z:Zip=Zipper(GenericInput(data=s.split()))\
-                    .takewhile(_HOUSE_NUMBER, **p)\
+                    .consume_with(_HOUSE_NUMBER, **p)\
                     .consume_with(_ST_NESW, **p)\
                     .takewhile(self.st_name)\
                     .takewhile(_ST_SUFFIX, **p)\

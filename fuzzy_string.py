@@ -16,9 +16,9 @@ def skipgram(text: str)->t.Iterable[t.Tuple[str, float]]:
 
 
 def skipgram_bow(s:str)->Bow:
-    d = {}
-    for tg in skipgram(s):
-        d[tg] = d.get(tg, 0) + 1
+    d: Bow = {}
+    for tg, weight in skipgram(s):
+        d[tg] = d.get(tg, 0) + weight
     return d
 
 
@@ -89,7 +89,7 @@ class FixTypos:
         words_with: t.Dict[str, t.Set[str]] = {}
         #swm = SubWordModel.new(words, get_features=weighted_skipgram)
         #vec_of = {}
-        bow_of = {}
+        bow_of: t.Dict[str, Bow] = {}
         #TODO base of frequency and don't recalculate seen words
         #z = np.zeros(swm.n)
         for word in join([words,["QWERTYUIOPASDFGHJKLZXCVBNM "]]):

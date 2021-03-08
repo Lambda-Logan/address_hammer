@@ -14,7 +14,7 @@ def _id(t:T)->T:
     return t
 
 def bag_from(ss: t.Iterable[str])->Bag:
-    d = {}
+    d: Bag = {}
     for s in ss:
         d[s] = d.get(s, 0) + 1
     return d
