@@ -196,7 +196,8 @@ class HashableFactory(t.NamedTuple):
                     softs[k].add(v)
             d[hards] = softs
 
-        fix_by_hand = {}
+        fix_by_hand: t.Dict[t.Tuple[str, str, str, str], t.List[Address]] = {}
+
         def is_ambig(softs:t.Dict[str, t.Set[Opt[str]]])->bool:
             l = [list(filter(None, v)) for k, v in softs.items() if k != "unit"]
             m = max(map(len, l))
@@ -211,7 +212,7 @@ class HashableFactory(t.NamedTuple):
                 fix_by_hand[hards] = similar_addresses
         
         def fix(a:Address)->t.List[Address]:
-            ret = []
+            ret: t.List[Address] = []
             hards = a.hard_components()
             softs = d.get(hards, None)
             if not softs:
@@ -219,7 +220,7 @@ class HashableFactory(t.NamedTuple):
             if is_ambig(softs): #cannot have mismatching st_suffix,st_NESW or zip_code
                 return []
             else:
-                _softs = {}
+                _softs: t.Dict[str, Opt[str]] = {}
                 for label, soft in softs.items():
                     v = list(softs[label])
                     if not v:
