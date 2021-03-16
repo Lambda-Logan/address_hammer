@@ -237,7 +237,7 @@ class Parser:
             pass
         p = {"ex_types":tuple([ParseError])} #TODO make Zipper.takewhile ignore exceptions after 1 consumed???
         try:
-            z:Zip=Zipper(GenericInput(data=s.split()))\
+            z:Zipper[str, ParseResult]=Zipper(GenericInput(data=s.split()))\
                     .consume_with(_HOUSE_NUMBER, **p)\
                     .consume_with(_ST_NESW, **p)\
                     .takewhile(self.st_name)\
@@ -245,9 +245,9 @@ class Parser:
                     .consume_with(_ST_NESW, **p)
             if regex.match(s, unit_R): #the only difference is .chomp_n(2, __chomp_unit__)... #TODO
 
-                    z:Zip = z.chomp_n(2, __chomp_unit__)
+                    z:Zipper[str, ParseResult] = z.chomp_n(2, __chomp_unit__)
             
-            z:Zip = z.takewhile(self.city, **p)\
+            z:Zipper[str, ParseResult] = z.takewhile(self.city, **p)\
                 .consume_with(_US_STATE)
 
             try:

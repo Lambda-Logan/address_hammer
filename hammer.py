@@ -1,5 +1,5 @@
 import typing as t
-from address import Address, RawAddress, HashableFactory
+from address import Address, HashableFactory
 from fuzzy_string import FixTypos
 from parsing import Parser, ParseError, smart_batch
 from itertools import chain
@@ -76,8 +76,8 @@ class Hammer:
             junk_cities_set = set(junk_cities)
             junk_streets_set = set(junk_streets)
 
-            ok:Fn[[Address], bool] = lambda a: a.city not in junk_cities_set \
-                                               and a.st_name not in junk_streets_set
+            #ok:Fn[[Address], bool] = lambda a: a.city not in junk_cities_set \
+            #                                   and a.st_name not in junk_streets_set
             def ok(a: Address)-> bool:
                 if a.city in junk_cities_set:
                     parse_errors.append((ParseError(a.orig, "junk city"), a.orig))
@@ -119,21 +119,23 @@ class Hammer:
         self.__hashable_factory__ = HashableFactory.from_all_addresses(addresses)
         self.ambigous_address_groups = self.__hashable_factory__.fix_by_hand
         self.__addresses__ = set(join(map(self.zero_or_more, addresses)))
-
+        self.parse_errors = parse_errors
+        
     def fix_typos(self, a:Address)->Address:
         return a.replace(city=self.__repair_city__(a.city),
                          st_name=self.__repair_st__(a.st_name))
 
         #self.__hashable_factory__.fix_by_hand
 
-    def __getitem__(self, a: t.Union[Address, str]) -> t.Optional[Address]:
+    def __getitem__(self, a: t.Union[Address, str]) -> Address:
         import warnings
         if isinstance(a, str):
             a = self.p(a)
         a = self.fix_typos(a)
         adds = self.__hashable_factory__(a)
         if len(adds) == 0:
-            return None
+            #return None
+            raise KeyError(str(a))
         if len(adds) == 1:
             return adds[0]
         else:
@@ -145,7 +147,7 @@ class Hammer:
             """+a.pretty() + "\n"
             warnings.warn(msg)
             return adds[0].replace(unit=None)
-            
+
     def __len__(self)->int:
         return len(self.__addresses__)
 
@@ -157,7 +159,11 @@ class Hammer:
             a = self.p(a)
         return self.__hashable_factory__(a)
 
-
+    def get(self, a: t.Union[Address, str], d: T)->t.Union[Address, T]:
+        try:
+            return self[a]
+        except KeyError:
+            return d
 ambigs_1 = [
         "001 Street City MI",
         "001 E Streeet City MI",
