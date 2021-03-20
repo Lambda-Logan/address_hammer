@@ -199,10 +199,20 @@ class HashableFactory(t.NamedTuple):
         fix_by_hand: t.Dict[t.Tuple[str, str, str, str], t.List[Address]] = {}
 
         def is_ambig(softs:t.Dict[str, t.Set[Opt[str]]])->bool:
-            l = [list(filter(None, v)) for k, v in softs.items() if k != "unit"]
-            m = max(map(len, l))
+            """
+            Is there more that one value for any given soft component? (except unit)
+            ...
+            The (less readable) definition was the following:
+            --l = [list(filter(None, v)) for k, v in softs.items() if k != "unit"]
+            --m = max(map(len, l))
+            --return m > 1
+            """
+            for label, vals in softs.items():
+                n_vals:int = len(list(filter(None, vals)))
+                if label != "unit" and n_vals > 1:
+                    return True
+            return False
 
-            return m > 1
         for a in addresses:
             hards = a.hard_components()
             softs = d[hards]

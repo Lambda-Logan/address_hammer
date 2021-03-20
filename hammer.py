@@ -120,7 +120,7 @@ class Hammer:
         self.ambigous_address_groups = self.__hashable_factory__.fix_by_hand
         self.__addresses__ = set(join(map(self.zero_or_more, addresses)))
         self.parse_errors = parse_errors
-        
+
     def fix_typos(self, a:Address)->Address:
         return a.replace(city=self.__repair_city__(a.city),
                          st_name=self.__repair_st__(a.st_name))
@@ -164,15 +164,19 @@ class Hammer:
             return self[a]
         except KeyError:
             return d
-ambigs_1 = [
-        "001 Street City MI",
-        "001 E Streeet City MI",
-        #"001 W Street City MI",
-        "001 Street St City MI",
-        "001 Street Apt 0 City MI",
-        "001 Street Apt 1 Ccity MI",
-    ]
-ambigs_2 = ambigs_1 + ["001 W Street City MI"]
-hammer = Hammer(ambigs_1)
-print(list(map(print, map( Address.Get.pretty, join(hammer.ambigous_address_groups)))))
-print(hammer["001 W Street Ave #4 City MI"].pretty())
+
+def test():
+    ambigs_1 = [
+            "001 Street City MI",
+            "001 E Streeet City MI",
+            #"001 W Street City MI",
+            "001 Street St City MI",
+            "001 Street Apt 0 City MI",
+            "001 Street Apt 1 Ccity MI",
+        ]
+    ambigs_2 = ambigs_1 + ["001 W Street City MI"]
+    hammer = Hammer(ambigs_1)
+    print(list(map(Address.Get.pretty, set(hammer))))
+    #print(list(map(print, map( Address.Get.pretty, join(hammer.ambigous_address_groups)))))
+    #print(hammer["001 W Street Ave #4 City MI"].pretty())
+test()
