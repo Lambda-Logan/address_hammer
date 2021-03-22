@@ -9,5 +9,5 @@ def all_tests():
     __zipper__.test()
     parsing.test()
     fuzzy_string.test()
-    
+
 all_tests()

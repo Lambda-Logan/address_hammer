@@ -1,4 +1,5 @@
 from __future__ import annotations
+#from parsing import Parser
 
 import typing as t
 from itertools import chain
@@ -48,11 +49,14 @@ class Address(t.NamedTuple):
 
         for s_soft, o_soft in zip(self.soft_components(), 
                                   other.soft_components()):
+                    
             if s_soft != None and o_soft != None:
                 if s_soft != o_soft:
                     return False
-
         return True
+
+    def __ne__(self, other: Address)-> bool:
+        return not (self == other)
 
     def hard_components(self)->t.Tuple[str, str, str, str]:
         return (self.house_number, 
@@ -82,6 +86,9 @@ class Address(t.NamedTuple):
         raise NotImplementedError
 
     def combine_soft(self, other: Address)->Address:
+        """
+        Combines the soft components of each address, prefering the left address.
+        """
         if self != other:
             raise Exception("cannot combine_soft two different addresses.")
         # by our definition of equality,
@@ -91,6 +98,13 @@ class Address(t.NamedTuple):
                "st_NESW":opt_sum(self.st_NESW, other.st_NESW), 
                "unit":opt_sum(self.unit, other.unit),
                "zip_code":opt_sum(self.zip_code, other.zip_code)})
+    def combine_soft_dict(self, other: t.Dict[str, Opt[str]])->Address:
+        f: Fn[[str], Opt[str]] = lambda label: other.get(label, None)
+        return self.replace(
+            **{"st_suffix":opt_sum(self.st_suffix, f("st_suffix")), 
+               "st_NESW":opt_sum(self.st_NESW, f("st_NESW")), 
+               "unit":opt_sum(self.unit, f("unit")),
+               "zip_code":opt_sum(self.zip_code, f("zip_code"))})
                
     def jsonize(self)->t.Dict[str,str]:
         return self._asdict()
@@ -172,7 +186,8 @@ class HashableFactory(t.NamedTuple):
     fill_in_info: Fn[[Address], t.List[Address]]
     fix_by_hand: t.List[t.List[Address]]
     def __call__(self, a:Address)->t.List[Address]:
-        return self.fill_in_info(a)
+        s = self.fill_in_info(a)
+        return s
 
     def hashable_addresses(self, addresses: t.Iterable[Address])->t.Iterable[Address]:
         return join(map(self, addresses))
@@ -183,20 +198,78 @@ class HashableFactory(t.NamedTuple):
         Each address is mapped to a list of each with more complete (but incompatible) soft elements
         """
         addresses = list(addresses)
-        def new_dict()->t.Dict[str, t.Set[Opt[str]]]:
-            return {soft:set([]) for soft in SOFT_COMPONENTS}
 
-        d : t.Dict[t.Sequence[str], t.Dict[str, t.Set[Opt[str]]]] = {}
+        _SOFT_COMPONENTS = [label for label in SOFT_COMPONENTS if label != "unit"]
+
+        def new_dict()->t.Dict[str, t.Set[str]]:
+            return {soft:set([]) for soft in _SOFT_COMPONENTS}
+
+        d : t.Dict[t.Sequence[str], t.Dict[str, t.Set[str]]] = {}
+
+        unit_store: t.Dict[t.Sequence[str], t.Dict[str, t.List[Address]]] = {}
+        #             dict[hards, dict[unit, addresses]]
         for a in addresses:
             hards = a.hard_components()
             softs = d.get(hards,new_dict())
             a_dict = a._asdict()
+            #softs["st_NESW"] = set(["E", "W"])
+            #print("SOFTS", softs)
             for k,v in a_dict.items():
-                if k in softs:
+                #print(k in softs, k, a.pretty())
+                if k in softs and v:# softs[k]:
+
                     softs[k].add(v)
             d[hards] = softs
 
-        fix_by_hand: t.Dict[t.Tuple[str, str, str, str], t.List[Address]] = {}
+            if a.unit:
+                u_adds: t.Dict[str, t.List[Address]] = unit_store.get(hards, {})
+                adds = u_adds.get(a.unit, [])
+                adds.append(a)
+                u_adds[a.unit] = adds
+                unit_store[hards] = u_adds
+
+        #should go in Address class?
+        idx_of: t.Dict[str, int] = {field:int for int, field in enumerate(Address._fields)}
+
+        def fill_in(a: Address)->Opt[t.List[Address]]:
+            hards = a.hard_components()
+            d_softs: t.Dict[str, t.Set[str]] = d[hards]
+
+            a_dict: t.Dict[str, Opt[str]] = {label: None for label in _SOFT_COMPONENTS}
+
+            for label in _SOFT_COMPONENTS:
+                vals = d_softs.get(label, set([]))
+                val = a[idx_of[label]]
+                if val: # it is specified in 'a'
+                    vals.add(val)
+                    a_dict[label] = val
+                elif len(vals) == 1: # it's not specified in 'a', but there's only 1 option it could be
+                    a_dict[label] = list(vals)[0]
+                elif len(vals) > 1: #it's ambigous and not specified in 'a'
+                    return None
+
+
+            # this is where filling units shoud be toggled
+            ret: t.List[Address] = []
+            if a.unit:
+                return [Address(*a.combine_soft_dict(a_dict))]
+            else:
+                units: t.Dict[str, t.List[Address]]  = unit_store.get(hards, set([]))
+                if not units:
+                    return [Address(*a.combine_soft_dict(a_dict))]
+                for adds in units.values():
+                    ret.extend([Address(*a.combine_soft(b)) for b in adds if a==b])
+                return ret
+
+
+
+        #remove ambigous apt addresses
+        for hards, u_adds in unit_store.items():
+            for unit, adds in u_adds.items():
+                unit_store[hards][unit] = list(join(filter(None, map(fill_in, adds))))
+
+
+
 
         def is_ambig(softs:t.Dict[str, t.Set[Opt[str]]])->bool:
             """
@@ -213,6 +286,8 @@ class HashableFactory(t.NamedTuple):
                     return True
             return False
 
+        fix_by_hand: t.Dict[t.Tuple[str, str, str, str], t.List[Address]] = {}
+
         for a in addresses:
             hards = a.hard_components()
             softs = d[hards]
@@ -220,41 +295,13 @@ class HashableFactory(t.NamedTuple):
                 similar_addresses = fix_by_hand.get(hards, [])
                 similar_addresses.append(a)
                 fix_by_hand[hards] = similar_addresses
-        
+
         def fix(a:Address)->t.List[Address]:
-            ret: t.List[Address] = []
-            hards = a.hard_components()
-            softs = d.get(hards, None)
-            if not softs:
+            adds = fill_in(a)
+            if adds == None:
                 return []
-            if is_ambig(softs): #cannot have mismatching st_suffix,st_NESW or zip_code
-                return []
-            else:
-                _softs: t.Dict[str, Opt[str]] = {}
-                for label, soft in softs.items():
-                    v = list(softs[label])
-                    if not v:
-                        _softs[label] = None
-                    else:
-                        _softs[label] = v[0]
-                units = list(filter(None, softs["unit"]))
-                with_unit: Fn[[Opt[str]], Address] = lambda unit: Address(
-                            house_number=a.house_number,
-                            st_name=a.st_name,
-                            st_suffix=opt_sum(a.st_suffix, _softs["st_suffix"]),
-                            st_NESW=opt_sum(a.st_NESW, _softs["st_NESW"]),
-                            unit=opt_sum(a.unit, unit),
-                            city=a.city,
-                            us_state=a.us_state,
-                            zip_code=opt_sum(a.zip_code, _softs["zip_code"]),
-                            orig = a.orig)
-                if a.unit != None:
-                    return [with_unit(a.unit)]
-                if not units:
-                    units = [None]
-                for unit in units:
-                    ret.append(with_unit(unit))
-            return ret
+            return adds
+            
         return HashableFactory(fill_in_info=fix, 
                                fix_by_hand=list(fix_by_hand.values()))
 
@@ -345,22 +392,97 @@ example_addresses = [    Address(
         zip_code  = "00100",
         orig = "0 N Division Zamalakoo MI 00100")]
 
+class UniqTest(t.NamedTuple):
+    """
+    this is a helper class to facilitate testing removal of duplicate addresses
+    xs should be mapped to ys, otherwise it fails
+    """
+    from parsing import Parser
+    p: Parser
+    xs: t.Sequence[Address]
+    ys: t.Sequence[Address]
+
+    @staticmethod
+    def new(p:Parser)->UniqTest:
+        return UniqTest(p=p,xs=(), ys=())
+
+    def run(self):
+        #we can't use set equality because RawAddress doesn't support hashing
+        ys = merge_duplicates(self.xs)
+        for y in ys:
+            if y not in ys:
+                raise Exception(f"{y.pretty()} not in self.ys")
+        assert len(ys) == len(self.ys)
+
+    
+    def run_with(self, d: t.Dict[str, t.List[str]]):
+        f = HashableFactory.from_all_addresses(self.xs)        
+        for add, add_strs in d.items():
+            adds = f(self.p(add))
+            adds_2 = list(map(self.p, add_strs))
+
+            for a in adds:
+                if a not in adds_2:
+                    raise Exception(f"{a.pretty()} not in output")
+            
+            for a in adds_2:
+                if a not in adds:
+                    print(add)
+                    raise Exception(f"{a.pretty()} not in output: {list(map(Address.Get.pretty, adds))}")
+
+
+    def with_x(self, x:Address)->UniqTest:
+        return self._replace(xs=(x,*self.xs))
+
+    def with_y(self, y:Address)->UniqTest:
+        return self._replace(ys=(y,*self.ys))
+
+    def without_x(self, x:Address)->UniqTest:
+        return self._replace(xs=(a for a in self.xs if a != x))
+    
+    def without_y(self, y:Address)->UniqTest:
+        return self._replace(ys=(a for a in self.ys if a != y))
 
 def test():
     from parsing import Parser
     p = Parser(known_cities=["City"])
     ambigs_1 = [
         "001 Street City MI",
-        "001 E Street City MI",
-        #"001 W Street City MI",
         "001 Street St City MI",
+        "001 E Street City MI",
         "001 Street Apt 0 City MI",
         "001 Street Apt 1 City MI",
     ]
     ambigs_2 = ["0 Main St Smallville AZ",
                 "0 Main Rd Smallville AZ"]
-    assert 2 == len(merge_duplicates(map(p,ambigs_1)))
-    assert 2 == len(HashableFactory.from_all_addresses(map(p, ambigs_2)).fix_by_hand[0])
+
+    UniqTest(
+        xs=tuple(map(p,ambigs_1)), 
+        ys = [p("001 E Street Apt 1 City MI"), 
+              p("001 E Street Apt 0 City MI")],
+        p=p).run()
+
+    assert 2 == len(HashableFactory\
+                    .from_all_addresses(map(p, ambigs_2))\
+                    .fix_by_hand[0])
+    
+ 
+    UniqTest(
+        p=p, 
+        xs = tuple(map(p, ambigs_1)), 
+        ys=())\
+        .with_x(p("001 W Street City MI"))\
+        .run()
+    
+    a = UniqTest(
+        p=p,
+        xs=tuple(map(p, ambigs_1)),
+        ys=()
+    )
+
+    #TODO pass the following test
+    a.run_with({"001 e street  st city mi":["001 E Street St Apt 1 City MI", "001 E Street St Apt 0 City MI"]})
+
     for a in example_addresses:
 
         assert a == a
@@ -369,7 +491,6 @@ def test():
 
         for x, y in soft_sames + sames:
             for soft in SOFT_COMPONENTS:
-                #print(x,"and", y)
                 assert(a.replace(**{soft:x}) == a.replace(**{soft:y})) 
                 assert(a.replace(**{soft:"X"}) != a.replace(**{soft:"Y"}))
 
@@ -380,5 +501,3 @@ def test():
                 assert(a.replace(**{hard:x}) == a.replace(**{hard:y}))
 
             assert(a.replace(**{hard:"X"}) != a.replace(**{hard:"Y"}))
-        
-
