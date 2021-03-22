@@ -1,8 +1,6 @@
 from __future__ import annotations
-import typing as t
-
-T = t.TypeVar("T")
-Fn = t.Callable
+from __types__ import *
+from typing import Generic
 
 class EndOfInputError(Exception):
     orig: str
@@ -11,10 +9,10 @@ class EndOfInputError(Exception):
         super(EndOfInputError, self).__init__("'" + orig + "'... reached end of input. Maybe a parsing stage consumed all input? Street name? City?")
 
 
-class GenericInput(t.Generic[T]):
+class GenericInput(Generic[T]):
     state: int
-    data: t.Sequence[T]
-    def __init__(self, data: t.Sequence[T], state: int = 0):
+    data: Seq[T]
+    def __init__(self, data: Seq[T], state: int = 0):
         self.data = list(data)
         self.state = state
     
@@ -50,7 +48,7 @@ class GenericInput(t.Generic[T]):
     def rest(self)->GenericInput[T]:
         return GenericInput(self.data, self.state+1)
 
-    def view(self)->t.Tuple[T, GenericInput[T]]:
+    def view(self)->Tuple[T, GenericInput[T]]:
         return (self.item(), self.rest())
     
     @staticmethod
@@ -60,7 +58,7 @@ class GenericInput(t.Generic[T]):
     def empty(self)->bool:
         return self.state + 1 > len(self.data)
 
-class InputIter(t.Generic[T]):
+class InputIter(Generic[T]):
     i: GenericInput[T]
     def __init__(self, i: GenericInput[T]):
         self.i = i
@@ -76,16 +74,16 @@ class InputIter(t.Generic[T]):
 class Uncatchable(Exception):
     pass
 
-I = t.TypeVar("I")
-O = t.TypeVar("O")
+I = TypeVar("I")
+O = TypeVar("O")
 
-def n_args(func: Fn[[t.Any], t.Any])-> int:
+def n_args(func: Fn[[Any], Any])-> int:
     from inspect import signature
     return len(signature(func).parameters)
 
-#Arrow = Fn[[I], t.Sequence[O]]
+#Arrow = Fn[[I], Seq[O]]
 
-class Zipper(t.Generic[I,O]):
+class Zipper(Generic[I,O]):
     """
     A stateless, streaming transformation from multiple 'I's to multiple 'O's.
 
@@ -106,9 +104,9 @@ class Zipper(t.Generic[I,O]):
     """
 
     leftover: GenericInput[I]
-    results: t.Iterable[O]
+    results: Iter[O]
 
-    def __init__(self, leftover: GenericInput[I], results: t.Iterable[O] = []):
+    def __init__(self, leftover: GenericInput[I], results: Iter[O] = []):
         self.leftover = leftover
         self.results = results
 
@@ -119,7 +117,7 @@ class Zipper(t.Generic[I,O]):
         #print()
         #print(self.leftover.as_str())
         #print(other.leftover.as_str())
-        def r()->t.Iterable[O]:
+        def r()->Iter[O]:
             yield from self.results
             yield from other.results
         return Zipper(leftover=other.leftover, results=r())
@@ -130,8 +128,8 @@ class Zipper(t.Generic[I,O]):
 
     def chomp_n(self, 
                   n: int,
-                  list_func: Fn[[t.Sequence[I]],t.Sequence[O]], #Idk how to typecheck [*args: I]
-                  ex_types: t.Sequence[t.Type[Exception]] = [Uncatchable])->Zipper[I,O]:
+                  list_func: Fn[[Seq[I]],Seq[O]], #Idk how to typecheck [*args: I]
+                  ex_types: Seq[Type[Exception]] = [Uncatchable])->Zipper[I,O]:
         """
         'list_func' is a function taking an 'n' length list of type 'I' and returning a Sequence[O]
         If non-empty, the output sequence of 'list_func(items)' is added to the results.
@@ -155,8 +153,8 @@ class Zipper(t.Generic[I,O]):
         "Did the zipper produce any results?"
         return len(list(self.realize().results)) > 0
 
-    def or_(self, funcs: t.Sequence[Fn[[I], t.Sequence[O]]],
-                  ex_types: t.Sequence[t.Type[Exception]] = [Uncatchable])->Zipper[I,O]:
+    def or_(self, funcs: Seq[Fn[[I], Seq[O]]],
+                  ex_types: Seq[Type[Exception]] = [Uncatchable])->Zipper[I,O]:
         """
         Takes a sequence of (i -> Sequence[O]),
         returns for first one to succeed on the next item of input.
@@ -177,8 +175,8 @@ class Zipper(t.Generic[I,O]):
         return self
     
     def consume_with(self,
-                  func: Fn[[I], t.Sequence[O]],
-                  ex_types: t.Sequence[t.Type[Exception]] = [Uncatchable])  ->  Zipper[I,O]:
+                  func: Fn[[I], Seq[O]],
+                  ex_types: Seq[Type[Exception]] = [Uncatchable])  ->  Zipper[I,O]:
         """
         If 'func(i)' returns a non-empty list, 'consume_with' will consume one item of input and the results are accumulated.
         If 'func(i)' returns [], no input is consumed and no results are accumulated.
@@ -188,22 +186,22 @@ class Zipper(t.Generic[I,O]):
         return self.takewhile(func, ex_types=ex_types, single=True)
 
     def takewhile(self, 
-                  pred_arrow: Fn[[I], t.Sequence[O]],
+                  pred_arrow: Fn[[I], Seq[O]],
                   single: bool = False,
-                  ex_types: t.Sequence[t.Type[Exception]] = [Uncatchable])  ->  Zipper[I,O]:    
+                  ex_types: Seq[Type[Exception]] = [Uncatchable])  ->  Zipper[I,O]:    
         """
         'pred_arrow' is (i -> Sequence[o]), the same as 'consume_with'
         While 'pred_arrow(i)' is non-empty, the the results are accumulated.
         Consumes no input if 'pred_arrow(i)' is [].
         """    
         n : int = 0
-        results : t.List[O] = []
+        results : List[O] = []
 
         if single:
             try:
                 leftover = [self.leftover.item()]
             except tuple(ex_types):
-                leftover: t.List [I] = []
+                leftover: List [I] = []
         else:
             leftover = self.leftover
 
@@ -228,19 +226,19 @@ class Zipper(t.Generic[I,O]):
         return self.merge(Zipper(leftover=new_input,
                           results=results))
 
-    def test(self, name: str, result: t.Sequence[int]):
+    def test(self, name: str, result: Seq[int]):
         _r = list(self.realize().results)
         passed = list(result) == _r
         if not passed:
             raise Exception(" ".join(["zipper", "'"+name+"'", "failed at", str(result), "\n", str(_r)]))
 
-    def test_leftover(self, name: str, leftover: t.Sequence[I]):
+    def test_leftover(self, name: str, leftover: Seq[I]):
         _l = self.realize().leftover.as_str()
         passed = " ".join(map(str,leftover))== _l
         if not passed:
             raise Exception(" ".join(["zipper", "'"+name+"'", "failed LEFTOVER", str(leftover), "\n", str(_l)]))
 
-def should_throw(name: str, ex_type: t.Type[Exception], f: Fn[[],t.Any]):
+def should_throw(name: str, ex_type: Type[Exception], f: Fn[[],Any]):
     try:
         f()
         raise Exception("{0} should have failed with {1}".format(name, str(ex_type)))
@@ -249,13 +247,13 @@ def should_throw(name: str, ex_type: t.Type[Exception], f: Fn[[],t.Any]):
 
 
 def test():
-    def fan_odd(n:int)->t.List[int]:
+    def fan_odd(n:int)->List[int]:
         if n % 2 == 0:
             return []
         else:
             return [n+0, n+1, n+2]
 
-    def fan_even(n:int)->t.List[int]:
+    def fan_even(n:int)->List[int]:
         if n % 2 == 1:
             return []
         else:

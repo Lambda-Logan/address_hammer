@@ -1,15 +1,17 @@
 from __future__ import annotations
-import typing as t
+
+from __types__ import *
+
+from typing import Pattern, Match
+
 import re
 
-#from re import split
 from address import RawAddress
 import address
 import __regex__ as regex
 from __zipper__ import Zipper, GenericInput, EndOfInputError
 
 
-Fn = t.Callable
 #TODO correctly handle all usps secondary unit identifiers and 1/2
 
 class ParseError(Exception):
@@ -37,7 +39,7 @@ class ParserConfigError(Exception):
         self.msg = msg
 
 
-class ParseResult(t.NamedTuple):
+class ParseResult(NamedTuple):
     label: str
     value: str
 
@@ -45,7 +47,7 @@ Input = GenericInput[str]
 
 
 
-def __make_stops_on__(stop_patterns: t.Iterable[t.Pattern[str]])-> Fn[[str], bool]:
+def __make_stops_on__(stop_patterns: Iter[Pattern[str]])-> Fn[[str], bool]:
     def stops_on(s:str)->bool:
         for pat in stop_patterns:
             if regex.match(s,pat):
@@ -53,17 +55,17 @@ def __make_stops_on__(stop_patterns: t.Iterable[t.Pattern[str]])-> Fn[[str], boo
         return False
     return stops_on
 
-ArrowParse = t.Callable[[str], t.Sequence[ParseResult]]
+ArrowParse = Fn[[str], Seq[ParseResult]]
 
-class AddressComponent(t.NamedTuple):
-    compiled_pattern: t.Pattern[str]
+class AddressComponent(NamedTuple):
+    compiled_pattern: Pattern[str]
     label: str
-    cont: t.Optional[AddressComponent] = None
+    cont: Opt[AddressComponent] = None
     optional: bool = False
     stops_on: Fn[[str], bool] = lambda s: False
 
     def arrow_parse(self)->ArrowParse:
-        def ap(s:str)-> t.Sequence[ParseResult]:
+        def ap(s:str)-> Seq[ParseResult]:
             #print(s)
             if self.stops_on(s):
                 #print("stopped")
@@ -83,16 +85,16 @@ class AddressComponent(t.NamedTuple):
     def then(self, cont: AddressComponent)->AddressComponent:
         return self._replace(cont=cont)
 
-st_suffices: t.List[str] = ["ALY", "ANX", "ARC", "AVE", "BYU", "BCH", "BND", "BLF", "BLFS", "BTM", "BLVD", "BR", "BRG", "BRK", "BRKS", "BG", "BGS", "BYP", "CP", "CYN", "CPE", "CSWY", "CTR", "CTRS", "CIR", "CIRS", "CLF", "CLFS", "CLB", "CMN", "CMNS", "COR", "CORS", "CRSE", "CT", "CTS", "CV", "CVS", "CRK", "CRES", "CRST", "XING", "XRD", "XRDS", "CURV", "DL", "DM", "DV", "DR", "DRS", "EST", "ESTS", "EXPY", "EXT", "EXTS", "FALL", "FLS", "FRY", "FLD", "FLDS", "FLT", "FLTS", "FRD", "FRDS", "FRST", "FRG", "FRGS", "FRK", "FRKS", "FT", "FWY", "GDN", "GDNS", "GTWY", "GLN", "GLNS", "GRN", "GRNS", "GRV", "GRVS", "HBR", "HBRS", "HVN", "HTS", "HWY", "HL", "HLS", "HOLW", "INLT", "IS", "ISS", "ISLE", "JCT", "JCTS", "KY", "KYS", "KNL ", "KNLS", "LK", "LKS", "LAND", "LNDG", "LN", "LGT", "LGTS", "LF", "LCK", "LCKS", "LDG", "LOOP", "MALL", "MNR", "MNRS", "MDW", "MDWS", "MEWS", "ML", "MLS", "MSN", "MTWY", "MT", "MTN", "MTNS", "NCK", "ORCH", "OVAL", "OPAS", "PARK", "PARK", "PKWY", "PKWY", "PASS", "PSGE", "PATH", "PIKE", "PNE ", "PNES", "PL", "PLN", "PLNS", "PLZ", "PT", "PTS", "PRT", "PRTS", "PR", "RADL", "RAMP", "RNCH", "RPD", "RPDS", "RST", "RDG", "RDGS", "RIV", "RD", "RDS", "RTE", "ROW", "RUE", "RUN", "SHL", "SHLS", "SHR", "SHRS", "SKWY", "SPG", "SPGS", "SPUR", "SPUR", "SQ", "SQS", "STA", "STRA", "STRM", "ST", "STS", "SMT", "TER", "TRWY", "TRCE", "TRAK", "TRFY", "TRL", "TUNL", "TPKE", "UPAS", "UN", "UNS", "VLY", "VLYS", "VIA", "VW", "VWS", "VLG", "VLGS", "VL", "VIS", "WALK", "WALK", "WALL", "WAY", "WAYS", "WL", "WLS"]
+st_suffices: List[str] = ["ALY", "ANX", "ARC", "AVE", "BYU", "BCH", "BND", "BLF", "BLFS", "BTM", "BLVD", "BR", "BRG", "BRK", "BRKS", "BG", "BGS", "BYP", "CP", "CYN", "CPE", "CSWY", "CTR", "CTRS", "CIR", "CIRS", "CLF", "CLFS", "CLB", "CMN", "CMNS", "COR", "CORS", "CRSE", "CT", "CTS", "CV", "CVS", "CRK", "CRES", "CRST", "XING", "XRD", "XRDS", "CURV", "DL", "DM", "DV", "DR", "DRS", "EST", "ESTS", "EXPY", "EXT", "EXTS", "FALL", "FLS", "FRY", "FLD", "FLDS", "FLT", "FLTS", "FRD", "FRDS", "FRST", "FRG", "FRGS", "FRK", "FRKS", "FT", "FWY", "GDN", "GDNS", "GTWY", "GLN", "GLNS", "GRN", "GRNS", "GRV", "GRVS", "HBR", "HBRS", "HVN", "HTS", "HWY", "HL", "HLS", "HOLW", "INLT", "IS", "ISS", "ISLE", "JCT", "JCTS", "KY", "KYS", "KNL ", "KNLS", "LK", "LKS", "LAND", "LNDG", "LN", "LGT", "LGTS", "LF", "LCK", "LCKS", "LDG", "LOOP", "MALL", "MNR", "MNRS", "MDW", "MDWS", "MEWS", "ML", "MLS", "MSN", "MTWY", "MT", "MTN", "MTNS", "NCK", "ORCH", "OVAL", "OPAS", "PARK", "PARK", "PKWY", "PKWY", "PASS", "PSGE", "PATH", "PIKE", "PNE ", "PNES", "PL", "PLN", "PLNS", "PLZ", "PT", "PTS", "PRT", "PRTS", "PR", "RADL", "RAMP", "RNCH", "RPD", "RPDS", "RST", "RDG", "RDGS", "RIV", "RD", "RDS", "RTE", "ROW", "RUE", "RUN", "SHL", "SHLS", "SHR", "SHRS", "SKWY", "SPG", "SPGS", "SPUR", "SPUR", "SQ", "SQS", "STA", "STRA", "STRM", "ST", "STS", "SMT", "TER", "TRWY", "TRCE", "TRAK", "TRFY", "TRL", "TUNL", "TPKE", "UPAS", "UN", "UNS", "VLY", "VLYS", "VIA", "VW", "VWS", "VLG", "VLGS", "VL", "VIS", "WALK", "WALK", "WALL", "WAY", "WAYS", "WL", "WLS"]
 st_suffix_R = re.compile(regex.or_(st_suffices))
 
-st_NESWs: t.List[str] = ["NE", "NW", "SE", "SW", "N", "S", "E", "W"]
+st_NESWs: List[str] = ["NE", "NW", "SE", "SW", "N", "S", "E", "W"]
 st_NESW_R = re.compile(regex.or_(st_NESWs))
 
-us_states: t.List[str] = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+us_states: List[str] = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
 us_state_R = re.compile(regex.or_(us_states))
 
-unit_types: t.List[str] = ["#", "APT", "BLDG", "STE", "UNIT", "RM", "DEPT", "TRLR", "LOT", "FL"] 
+unit_types: List[str] = ["#", "APT", "BLDG", "STE", "UNIT", "RM", "DEPT", "TRLR", "LOT", "FL"] 
 unit_R = re.compile(regex.or_(unit_types))
 unit_identifier_R = re.compile(r"\#?\s*(\d+[A-Z]?|[A-Z]\d*)")
 
@@ -101,7 +103,7 @@ _HOUSE_NUMBER = AddressComponent(
                  label="house_number", #123 1/3 Pine St
                  compiled_pattern=re.compile(r"[\d/]+")).arrow_parse()
 
-def __make_st_name__(known_cities:t.List[t.Pattern[str]]=[])->Fn[[str], t.Sequence[ParseResult]]:
+def __make_st_name__(known_cities:List[Pattern[str]]=[])->Fn[[str], Seq[ParseResult]]:
     return AddressComponent(
             label="st_name",
             compiled_pattern=re.compile(r"\w+"),
@@ -109,7 +111,7 @@ def __make_st_name__(known_cities:t.List[t.Pattern[str]]=[])->Fn[[str], t.Sequen
 
 #_ST_NAME = __make_st_name__()
 
-def __chomp_unit__(words: t.Sequence[str])->t.Sequence[ParseResult]:
+def __chomp_unit__(words: Seq[str])->Seq[ParseResult]:
     assert len(words)==2
     if words[0] == "#":
         unit = "APT"
@@ -141,13 +143,13 @@ _ZIP_CODE = AddressComponent(
                 compiled_pattern=re.compile(r"\d{5}")).arrow_parse()
 
 address_midpoint_R = re.compile(regex.or_(st_suffices + st_NESWs + unit_types))
-def str_to_opt(s:t.Optional[str])->t.Optional[str]:
+def str_to_opt(s:Opt[str])->Opt[str]:
     if s == None:
         return None
     if not s.split():
         return None
     return s
-def city_repl(s:t.Match[str])->str:
+def city_repl(s:Match[str])->str:
     return " "+s.group(0).strip().replace(" ", "_")+" "
 Zip = Zipper[str, str]
 class Parser:
@@ -178,14 +180,14 @@ class Parser:
         
         "123 Dallas Houston TX"    # # the street is recognized as a city (and unfortunately there is not an identifier bewteen the street and city)
     """
-    blank_parse: t.Optional[Parser]
-    city: Fn[[str], t.Sequence[ParseResult]]
-    st_name: Fn[[str], t.Sequence[ParseResult]]
-    required : t.Set[str] = set(address.HARD_COMPONENTS)
-    optional: t.Set[str] = set(address.SOFT_COMPONENTS)
-    known_cities : t.List[str] = []
-    known_cities_R : t.Optional[t.Pattern[str]] = None
-    def __init__(self,  known_cities:t.List[str]= []):
+    blank_parse: Opt[Parser]
+    city: Fn[[str], Seq[ParseResult]]
+    st_name: Fn[[str], Seq[ParseResult]]
+    required : Set[str] = set(address.HARD_COMPONENTS)
+    optional: Set[str] = set(address.SOFT_COMPONENTS)
+    known_cities : List[str] = []
+    known_cities_R : Opt[Pattern[str]] = None
+    def __init__(self,  known_cities:List[str]= []):
         
         known_cities = list(filter(None, known_cities))
         if known_cities:
@@ -200,7 +202,7 @@ class Parser:
                         label="city",
                         compiled_pattern=re.compile(regex.or_(normalized_cities_B + [r"\w+"])),
                         stops_on=__make_stops_on__([us_state_R, re.compile(r"\d+")])).arrow_parse()
-        def city_B(s:str)->t.Sequence[ParseResult]:
+        def city_B(s:str)->Seq[ParseResult]:
             #print("city??", s)
             #print("\t", city_A(s))
             return [ParseResult(value=pr.value.replace("_", " "), label=pr.label) for pr in city_A(s)]
@@ -261,7 +263,7 @@ class Parser:
         except ParseError as e:
             raise ParseError(_s, e.reason)
 
-        d : t.Dict[str, t.List[str]] = {
+        d : Dict[str, List[str]] = {
                 "house_number" : [],
                 "st_name" : [],
                 "st_suffix" : [],
@@ -283,23 +285,23 @@ class Parser:
                     raise ParseError(_s, "Could not identify "+req)
 
         d["unit"] = [n.replace("#", "") for n in d["unit"]]
-        str_d: t.Dict[str, t.Optional[str]] = {field : " ".join(values) for field, values in d.items()}
+        str_d: Dict[str, Opt[str]] = {field : " ".join(values) for field, values in d.items()}
         for opt in Parser.optional:
             str_d[opt] = str_to_opt(str_d[opt])
         return RawAddress(orig=_s, **str_d)
 
 
 def smart_batch(p: Parser,
-               adds:t.Iterable[str],
-               report_error: Fn[[ParseError, str], None] = lambda e,s: None) -> t.Iterable[RawAddress]:
+               adds:Iter[str],
+               report_error: Fn[[ParseError, str], None] = lambda e,s: None) -> Iter[RawAddress]:
     """
     This function takes an iter of address strings and tries to repair dirty addresses by using the city information from clean ones.
     For example: "123 Main, Springfield OH 12123" will be correctly parsed iff 'SPRINGFIELD' is a city of another address.
     The 'report_error' callback is called on all address strings that cannot be repaired
     (other than 'report_error', all ParseErrors are ignored)
     """
-    errs: t.List[str] = []
-    cities : t.Set[str] = set([])
+    errs: List[str] = []
+    cities : Set[str] = set([])
     pre = 0
     for add in adds:
         try:

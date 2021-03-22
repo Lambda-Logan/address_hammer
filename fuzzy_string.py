@@ -1,11 +1,11 @@
 from __future__ import annotations
-import typing as t
+from __types__ import *
 
-Bow = t.Dict[str, float]
-Fn = t.Callable
+Bow = Dict[str, float]
 
 
-def skipgram(text: str)->t.Iterable[t.Tuple[str, float]]:
+
+def skipgram(text: str)->Iter[Tuple[str, float]]:
     length = len(text)
     for i in range(length):
         for j in range(i,length):
@@ -22,9 +22,8 @@ def skipgram_bow(s:str)->Bow:
     return d
 
 
-T  = t.TypeVar("T")
 
-def corresponding_colums(a:t.Dict[T,float], b:t.Dict[T,float])->t.Iterable[t.Tuple[float, float]]:
+def corresponding_colums(a:Dict[T,float], b:Dict[T,float])->Iter[Tuple[float, float]]:
     "pairwise iterator of the columns of sparse vectors 'a' and 'b'"
     for word, a_val in a.items():
         yield a_val, b.get(word, 0.0)
@@ -51,13 +50,13 @@ def weighted_jaccard(a:Bow, b:Bow)->float:
 
 
 def level_to_dec(level: float, 
-                 __range__:t.Tuple[float, float] = (0.5,1.0))->float:
+                 __range__:Tuple[float, float] = (0.5,1.0))->float:
     l, h = __range__
     delta = h - l
     step = delta / 10.0
     return h - (level * step)
 
-def const_false(_:t.Any)->bool:
+def const_false(_:Any)->bool:
     return False
 
 class FixTypos:
@@ -70,10 +69,10 @@ class FixTypos:
         b = FixTypos(vocablist, cuttoff = 10)
         c = FixTypos(vocablist, cuttoff = 0 )
     """
-    sims_of: Fn[[str], t.Iterable[t.Tuple[str, float]]]
+    sims_of: Fn[[str], Iter[Tuple[str, float]]]
     should_maybe_fix: Fn[[str], bool]
     cuttoff: float
-    def __init__(self, words: t.Iterable[str],
+    def __init__(self, words: Iter[str],
                     cuttoff: float = 5):
 
         import re
@@ -86,10 +85,10 @@ class FixTypos:
         self.cuttoff = level_to_dec(cuttoff)
 
         words = list(words)
-        words_with: t.Dict[str, t.Set[str]] = {}
+        words_with: Dict[str, Set[str]] = {}
         #swm = SubWordModel.new(words, get_features=weighted_skipgram)
         #vec_of = {}
-        bow_of: t.Dict[str, Bow] = {}
+        bow_of: Dict[str, Bow] = {}
         #TODO base of frequency and don't recalculate seen words
         #z = np.zeros(swm.n)
         for word in join([words,["QWERTYUIOPASDFGHJKLZXCVBNM "]]):
@@ -112,8 +111,8 @@ class FixTypos:
 
         self.should_maybe_fix = should_maybe_fix
 
-        def sims_of(s:str)->t.Iterable[t.Tuple[str, float]]:
-            words: t.Set[str] = set([])
+        def sims_of(s:str)->Iter[Tuple[str, float]]:
+            words: Set[str] = set([])
             bow = skipgram_bow(s)
             #s_vec = swm.word2row(s)
             s_bow = skipgram_bow(s)

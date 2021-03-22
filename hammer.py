@@ -1,19 +1,16 @@
-import typing as t
+from __future__ import annotations
+from __types__ import *
 from address import Address, HashableFactory
 from fuzzy_string import FixTypos
 from parsing import Parser, ParseError, smart_batch
-from itertools import chain
-join = chain.from_iterable
 
-Fn = t.Callable
+Bag = Dict[str, int]
 
-Bag = t.Dict[str, int]
-T = t.TypeVar("T")
 
 def _id(t:T)->T:
     return t
 
-def bag_from(ss: t.Iterable[str])->Bag:
+def bag_from(ss: Iter[str])->Bag:
     d: Bag = {}
     for s in ss:
         d[s] = d.get(s, 0) + 1
@@ -48,23 +45,23 @@ class Hammer:
     p: Parser
     __repair_st__: Fn[[str], str]
     __repair_city__: Fn[[str], str]
-    parse_errors: t.List[t.Tuple[ParseError, str]]
-    ambigous_address_groups: t.List[t.List[Address]]
-    __addresses__: t.Set[Address]
+    parse_errors: List[Tuple[ParseError, str]]
+    ambigous_address_groups: List[List[Address]]
+    __addresses__: Set[Address]
     __hashable_factory__: HashableFactory
     def __init__(self, 
-                 input_addresses: t.Iterable[t.Union[str, Address]],
-                 known_cities: t.Sequence[str] = [],
-                 known_streets: t.Sequence[str] = [],
+                 input_addresses: Iter[Union[str, Address]],
+                 known_cities: Seq[str] = [],
+                 known_streets: Seq[str] = [],
                  city_repair_level: int = 5,
                  street_repair_level: int = 5,
-                 junk_cities: t.Sequence[str] = [],
-                 junk_streets: t.Sequence[str] = []):
+                 junk_cities: Seq[str] = [],
+                 junk_streets: Seq[str] = []):
         from math import log
         p = Parser(known_cities=list(known_cities))
-        address_strings: t.List[str] = []
-        adds: t.List[Address] = []
-        parse_errors: t.List[t.Tuple[ParseError, str]] = []
+        address_strings: List[str] = []
+        adds: List[Address] = []
+        parse_errors: List[Tuple[ParseError, str]] = []
         for address in input_addresses:
             if isinstance(address, str):
                 address_strings.append(address)
@@ -72,7 +69,7 @@ class Hammer:
                 adds.append(address)
         
 
-        def addresses_iter()->t.Iterable[Address]:
+        def addresses_iter()->Iter[Address]:
             junk_cities_set = set(junk_cities)
             junk_streets_set = set(junk_streets)
 
@@ -127,7 +124,7 @@ class Hammer:
 
         #self.__hashable_factory__.fix_by_hand
 
-    def __getitem__(self, a: t.Union[Address, str]) -> Address:
+    def __getitem__(self, a: Union[Address, str]) -> Address:
         import warnings
         if isinstance(a, str):
             a = self.p(a)
@@ -151,15 +148,15 @@ class Hammer:
     def __len__(self)->int:
         return len(self.__addresses__)
 
-    def __iter__(self)->t.Iterable[Address]:
+    def __iter__(self)->Iter[Address]:
         return iter(self.__addresses__)
 
-    def zero_or_more(self, a: t.Union[Address, str]) -> t.List[Address]:
+    def zero_or_more(self, a: Union[Address, str]) -> List[Address]:
         if isinstance(a, str):
             a = self.p(a)
         return self.__hashable_factory__(a)
 
-    def get(self, a: t.Union[Address, str], d: T)->t.Union[Address, T]:
+    def get(self, a: Union[Address, str], d: T)->Union[Address, T]:
         try:
             return self[a]
         except KeyError:

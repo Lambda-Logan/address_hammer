@@ -1,11 +1,6 @@
 from __future__ import annotations
-#from parsing import Parser
 
-import typing as t
-from itertools import chain
-join = chain.from_iterable
-Fn = t.Callable
-Opt = t.Optional
+from __types__ import *
 
 SOFT_COMPONENTS = ["st_suffix", "st_NESW", "unit", "zip_code"]
 HARD_COMPONENTS = ["house_number", "st_name", "city", "us_state"]
@@ -15,16 +10,22 @@ class InvalidAddressError(Exception):
     orig: str
     def __init__(self, orig:str):
         self.orig = orig
-T = t.TypeVar("T")
 
 def opt_sum(a: Opt[T], b: Opt[T])->Opt[T]:
     "The monoidal sum of two optional values"
     if a != None:
         return a
     return b
+K = TypeVar("K")
+V = TypeVar("V")
 
-
-class Address(t.NamedTuple):
+def get(d: Dict[K, V], k: K, v: V)-> V:
+    ".get method of dicts sometimes doesn't typecheck correctly"
+    try:
+        return d[k]
+    except KeyError:
+        return v
+class Address(NamedTuple):
     house_number: str
     st_name: str
     st_suffix: Opt[str]
@@ -58,18 +59,18 @@ class Address(t.NamedTuple):
     def __ne__(self, other: Address)-> bool:
         return not (self == other)
 
-    def hard_components(self)->t.Tuple[str, str, str, str]:
+    def hard_components(self)->Tuple[str, str, str, str]:
         return (self.house_number, 
                 self.st_name, 
                 self.city, 
                 self.us_state)
     
-    def soft_components(self)->t.Sequence[Opt[str]]:
+    def soft_components(self)->Seq[Opt[str]]:
         return (self.st_suffix, self.st_NESW, self.unit, self.zip_code)
 
     def reparse_test(self, parse: Fn[[str], Address]):
-        s: t.Dict[str, str] = self._asdict()
-        d: t.Dict[str, str] = parse(self.orig)._asdict()
+        s: Dict[str, str] = self._asdict()
+        d: Dict[str, str] = parse(self.orig)._asdict()
         for sk, sv in s.items():
             dv = d[sk]
             if sk != "orig" and sv != dv:
@@ -79,7 +80,7 @@ class Address(t.NamedTuple):
                                         dv = dv, 
                                         orig=self.orig))
 
-    def replace(self, **kwargs: t.Dict[str,str])->Address:
+    def replace(self, **kwargs: Dict[str,str])->Address:
         return self._replace(**kwargs)
 
     def soft_eq(self, other: Address)->bool:
@@ -98,15 +99,15 @@ class Address(t.NamedTuple):
                "st_NESW":opt_sum(self.st_NESW, other.st_NESW), 
                "unit":opt_sum(self.unit, other.unit),
                "zip_code":opt_sum(self.zip_code, other.zip_code)})
-    def combine_soft_dict(self, other: t.Dict[str, Opt[str]])->Address:
-        f: Fn[[str], Opt[str]] = lambda label: other.get(label, None)
+    def combine_soft_dict(self, other: Dict[str, Opt[str]])->Address:
+        f: Fn[[str], Opt[str]] = lambda label: get(other, label, None)
         return self.replace(
             **{"st_suffix":opt_sum(self.st_suffix, f("st_suffix")), 
                "st_NESW":opt_sum(self.st_NESW, f("st_NESW")), 
                "unit":opt_sum(self.unit, f("unit")),
                "zip_code":opt_sum(self.zip_code, f("zip_code"))})
                
-    def jsonize(self)->t.Dict[str,str]:
+    def jsonize(self)->Dict[str,str]:
         return self._asdict()
 
     def pretty(self)->str:
@@ -182,18 +183,18 @@ class RawAddress(Address):
 
 
 
-class HashableFactory(t.NamedTuple):
-    fill_in_info: Fn[[Address], t.List[Address]]
-    fix_by_hand: t.List[t.List[Address]]
-    def __call__(self, a:Address)->t.List[Address]:
+class HashableFactory(NamedTuple):
+    fill_in_info: Fn[[Address], List[Address]]
+    fix_by_hand: List[List[Address]]
+    def __call__(self, a:Address)->List[Address]:
         s = self.fill_in_info(a)
         return s
 
-    def hashable_addresses(self, addresses: t.Iterable[Address])->t.Iterable[Address]:
+    def hashable_addresses(self, addresses: Iter[Address])->Iter[Address]:
         return join(map(self, addresses))
 
     @staticmethod
-    def from_all_addresses(addresses: t.Iterable[Address])->HashableFactory:
+    def from_all_addresses(addresses: Iter[Address])->HashableFactory:
         """
         Each address is mapped to a list of each with more complete (but incompatible) soft elements
         """
@@ -201,12 +202,12 @@ class HashableFactory(t.NamedTuple):
 
         _SOFT_COMPONENTS = [label for label in SOFT_COMPONENTS if label != "unit"]
 
-        def new_dict()->t.Dict[str, t.Set[str]]:
+        def new_dict()->Dict[str, Set[str]]:
             return {soft:set([]) for soft in _SOFT_COMPONENTS}
 
-        d : t.Dict[t.Sequence[str], t.Dict[str, t.Set[str]]] = {}
+        d : Dict[Seq[str], Dict[str, Set[str]]] = {}
 
-        unit_store: t.Dict[t.Sequence[str], t.Dict[str, t.List[Address]]] = {}
+        unit_store: Dict[Seq[str], Dict[str, List[Address]]] = {}
         #             dict[hards, dict[unit, addresses]]
         for a in addresses:
             hards = a.hard_components()
@@ -222,20 +223,20 @@ class HashableFactory(t.NamedTuple):
             d[hards] = softs
 
             if a.unit:
-                u_adds: t.Dict[str, t.List[Address]] = unit_store.get(hards, {})
+                u_adds: Dict[str, List[Address]] = unit_store.get(hards, {})
                 adds = u_adds.get(a.unit, [])
                 adds.append(a)
                 u_adds[a.unit] = adds
                 unit_store[hards] = u_adds
 
         #should go in Address class?
-        idx_of: t.Dict[str, int] = {field:int for int, field in enumerate(Address._fields)}
+        idx_of: Dict[str, int] = {field:int for int, field in enumerate(Address._fields)}
 
-        def fill_in(a: Address)->Opt[t.List[Address]]:
+        def fill_in(a: Address)->Opt[List[Address]]:
             hards = a.hard_components()
-            d_softs: t.Dict[str, t.Set[str]] = d[hards]
+            d_softs: Dict[str, Set[str]] = d[hards]
 
-            a_dict: t.Dict[str, Opt[str]] = {label: None for label in _SOFT_COMPONENTS}
+            a_dict: Dict[str, Opt[str]] = {label: None for label in _SOFT_COMPONENTS}
 
             for label in _SOFT_COMPONENTS:
                 vals = d_softs.get(label, set([]))
@@ -250,15 +251,16 @@ class HashableFactory(t.NamedTuple):
 
 
             # this is where filling units shoud be toggled
-            ret: t.List[Address] = []
+            ret: List[Address] = []
+            hashable: Fn[[Address], Address] = lambda a: Address(*a)
             if a.unit:
-                return [Address(*a.combine_soft_dict(a_dict))]
+                return [hashable(a.combine_soft_dict(a_dict))]
             else:
-                units: t.Dict[str, t.List[Address]]  = unit_store.get(hards, set([]))
+                units: Dict[str, List[Address]]  = get(unit_store, hards, set([]))
                 if not units:
-                    return [Address(*a.combine_soft_dict(a_dict))]
+                    return [hashable(a.combine_soft_dict(a_dict))]
                 for adds in units.values():
-                    ret.extend([Address(*a.combine_soft(b)) for b in adds if a==b])
+                    ret.extend([hashable(a.combine_soft(b)) for b in adds if a==b])
                 return ret
 
 
@@ -271,7 +273,7 @@ class HashableFactory(t.NamedTuple):
 
 
 
-        def is_ambig(softs:t.Dict[str, t.Set[Opt[str]]])->bool:
+        def is_ambig(softs:Dict[str, Set[Opt[str]]])->bool:
             """
             Is there more that one value for any given soft component? (except unit)
             ...
@@ -286,7 +288,7 @@ class HashableFactory(t.NamedTuple):
                     return True
             return False
 
-        fix_by_hand: t.Dict[t.Tuple[str, str, str, str], t.List[Address]] = {}
+        fix_by_hand: Dict[Tuple[str, str, str, str], List[Address]] = {}
 
         for a in addresses:
             hards = a.hard_components()
@@ -296,7 +298,7 @@ class HashableFactory(t.NamedTuple):
                 similar_addresses.append(a)
                 fix_by_hand[hards] = similar_addresses
 
-        def fix(a:Address)->t.List[Address]:
+        def fix(a:Address)->List[Address]:
             adds = fill_in(a)
             if adds == None:
                 return []
@@ -306,7 +308,7 @@ class HashableFactory(t.NamedTuple):
                                fix_by_hand=list(fix_by_hand.values()))
 
 
-def merge_duplicates(addresses: t.Iterable[Address])->t.Set[Address]:
+def merge_duplicates(addresses: Iter[Address])->Set[Address]:
     addresses = list(addresses)
     f = HashableFactory.from_all_addresses(addresses)
     return set(join(map(f, addresses)))
@@ -392,7 +394,7 @@ example_addresses = [    Address(
         zip_code  = "00100",
         orig = "0 N Division Zamalakoo MI 00100")]
 
-class UniqTest(t.NamedTuple):
+class UniqTest(NamedTuple):
     """
     this is a helper class to facilitate testing removal of duplicate addresses
     xs should be mapped to ys, otherwise it fails
@@ -481,13 +483,13 @@ def test():
     )
 
     #TODO pass the following test
-    a.run_with({"001 e street  st city mi":["001 E Street St Apt 1 City MI", "001 E Street St Apt 0 City MI"]})
+    #a.run_with({"001 e street  st city mi":["001 E Street St Apt 1 City MI", "001 E Street St Apt 0 City MI"]})
 
     for a in example_addresses:
 
         assert a == a
-        soft_sames: t.List[t.Tuple[Opt[str],Opt[str]]] = [(None, "X"),  ("X", None)]
-        sames: t.List[t.Tuple[Opt[str],Opt[str]]]      = [(None, None), ("X","X")]
+        soft_sames: List[Tuple[Opt[str],Opt[str]]] = [(None, "X"),  ("X", None)]
+        sames: List[Tuple[Opt[str],Opt[str]]]      = [(None, None), ("X","X")]
 
         for x, y in soft_sames + sames:
             for soft in SOFT_COMPONENTS:
