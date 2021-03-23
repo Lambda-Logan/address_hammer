@@ -12,7 +12,7 @@ This is a robust and simple tool for parsing and normalizing U.S residential add
 
 There are two main tools: **`Hammer`** and **`Parser`**. 
 - A `Parser` takes a string and produces a `RawAddress` (which isn't hashable because it still might have typos and missing info).
-- A `Hammer` is trained on an iter of address strings and produces multiple `Address` (see below). As it already uses `Parser` internally, you should prefer using `Hammer`.
+- A `Hammer` is trained on an iter of address strings and produces multiple `Address` (see below). As it already uses `Parser` internally, you should prefer using `Hammer` to `Parser`. The `Hammer` instance in your program will also remove duplicates and combine info bewteen equivalent addresses.
 
 
 
@@ -87,7 +87,7 @@ class Address(NamedTuple):
  ```
  Two addresses can still be equal even with missing information, with the rule that all info that is present in both addresses must be equal (except `orig`). 
  
- All attributes are available as a first class function via `Address.Get`. For example: `map(Address.Get.house_number, addresses)`
+ All attributes are available as a first class function via `Address.Get`. For example: `map(Address.Get.house_number, hammer)`
 
 
 
@@ -107,14 +107,17 @@ Directly using `Parser` has the limitation that all address strings must either 
 p = Parser()
 p2 = Parser(known_cities=["City"])
 
+trouble_address = "123 Street City NY"
+
 #these will work
 p("123 Street St City NY")
 p("123 Street E City NY")
 p("123 Street Apt 512 City NY")
-p2("123 Street City NY")
+
+p2(trouble_address) 
 
 #this won't
-# p1("123 Street City NY")
+# p(trouble_address)
 ```
 
 Also, directly using a `Parser` has the limitation that a known city cannot be part of a street name if there is no unit or street suffix. The following will not work:
@@ -138,6 +141,9 @@ To geocode, use https://geocoder.readthedocs.io/
 P.O box is not yet supported
 
 No full street suffices or state names are automaticallly abbreviated and all address strings need a valid U.S state. e.i "michigan" will not become "MI" and "street" will not be coerced to "ST".
+
+The `Hammer` class provides support for modest **typo correction** of streets and cities. It uses weighted Jaccard distance of skipgrams and **is not a fully developed feature at this point**. It is very conservative and will only correct minor typos in long street names or cities.
+
 
 # You can help
 If there is any unexpected result, please file a bug. This is especially important if you run into a USPS compliant address that is incorrectly parsed.
