@@ -144,6 +144,7 @@ No full street suffices or state names are automaticallly abbreviated and all ad
 
 The `Hammer` class provides support for modest **typo correction** of streets and cities. It uses weighted Jaccard distance of skipgrams and **is not a fully developed feature at this point**. It is very conservative and will only correct minor typos in long street names or cities.
 
+Only 5 digit zip codes are supported so far.
 
 # You can help
 If there is any unexpected result, please file a bug. This is especially important if you run into a USPS compliant address that is incorrectly parsed.
