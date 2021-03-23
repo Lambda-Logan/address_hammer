@@ -114,6 +114,7 @@ p2("123 Street City NY")
 
 #this won't
 # p1("123 Street City NY")
+```
 
 Also, directly using a `Parser` has the limitation that a known city cannot be part of a street name if there is no unit or street suffix. The following will not work:
 ```python
@@ -130,7 +131,9 @@ p("128 E Grandville Grandville MI")
 
 # Limitations
 To verify addresses, use https://pypi.org/project/usps-api/
+
 To geocode, use https://geocoder.readthedocs.io/
+
 P.O box is not yet supported
 
 No full street suffices or state names are abbreviated and all address strings need a valid U.S state. e.i "michigan" will not become "MI" and "street" will not be coerced to "ST".
