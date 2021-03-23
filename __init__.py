@@ -20,4 +20,4 @@ b =  ["123 Straight Houuston TX", #typo
         "123 Dallas Houston TX" ]
 """
 
-(EndOfAddressError, Address, Parser, ParseError, smart_batch, RawAddress, InvalidAddressError, Hammer)
+(EndOfAddressError, Address, Parser, ParseError, RawAddress, InvalidAddressError, Hammer)

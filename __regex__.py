@@ -45,4 +45,4 @@ def match_all(s:str,pat:Pattern[str])->Seq[str]:
     else:
         return m.groups()
 
-__used__ = (or_, and_) 
+(or_, and_) 

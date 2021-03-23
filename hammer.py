@@ -57,6 +57,13 @@ class Hammer:
                  street_repair_level: int = 5,
                  junk_cities: Seq[str] = [],
                  junk_streets: Seq[str] = []):
+        
+        if city_repair_level > 10 or city_repair_level < 0:
+            raise ValueError("The typo repair level must be between 0-10, not " + str(city_repair_level ))
+        
+        if street_repair_level > 10 or street_repair_level < 0:
+            raise ValueError("The typo repair level must be between 0-10, not " + str(street_repair_level ))
+        
         from math import log
         p = Parser(known_cities=list(known_cities))
         address_strings: List[str] = []
