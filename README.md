@@ -137,7 +137,7 @@ To geocode, use https://geocoder.readthedocs.io/
 
 P.O box is not yet supported
 
-No full street suffices or state names are abbreviated and all address strings need a valid U.S state. e.i "michigan" will not become "MI" and "street" will not be coerced to "ST".
+No full street suffices or state names are automaticallly abbreviated and all address strings need a valid U.S state. e.i "michigan" will not become "MI" and "street" will not be coerced to "ST".
 
 # You can help
 If there is any unexpected result, please file a bug. This is especially important if you run into a USPS compliant address that is incorrectly parsed.
