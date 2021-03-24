@@ -64,9 +64,16 @@ print(hammer["321 Fake St Lot 446 Phoenix AZ"])
 # :-D
 ```
 
+All parse errors are stored in `hammer.parse_errors`, which has the type `List[Tuple[ParseError, str]]`.
+```python
+h = Hammer(["Junk address string wooohoooo"])
 
-
-
+for error, bad_address in h.parse_errors:
+    print(bad_address)
+    raise error
+# >> 'Junk address string wooohoooo'
+# EndOfInputError !
+```
 
 
 # `Address`
