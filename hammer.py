@@ -97,8 +97,8 @@ class Hammer:
                                 report_error=report_error))
             yield from filter(ok, adds)
         addresses = list(addresses_iter())
-
-        cuttoff = log(len(addresses))
+        
+        cuttoff = log(max(len(addresses), 1))
 
         city_bag = bag_from(map(Address.Get.city, addresses))
 
