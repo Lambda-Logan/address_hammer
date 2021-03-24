@@ -1,7 +1,7 @@
 # address_hammer
 > _Hammer messy addresses into something beautiful._
 
-This is a robust and simple tool for parsing and normalizing U.S residential addresses, especially in a messy real-word context. Given enough addresses, it can correct minor typos, fill in missing info and merge all duplicate addresses without loss of information. It's written 100% in strictly statically type checked python, has zero external dependencies and gives more transparent errors than a deep-learning approach.
+This is a robust and simple tool for parsing and normalizing U.S residential addresses, especially in a messy real-word context. Given enough addresses, it can correct minor typos, fill in missing info and merge all duplicate addresses without loss of information. It's written 100% in strictly statically type checked python, has zero external dependencies and makes it possible to have more transparent errors than a deep-learning approach.
 
 # Address Hammer might be useful if you...
 - have ever wanted to **remove duplicate addresses** from a list or spreadsheet
