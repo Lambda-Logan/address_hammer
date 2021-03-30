@@ -11,11 +11,15 @@ This is a robust and simple tool for parsing and normalizing U.S residential add
 - have an advertising or volunteer outreach campaign involving many U.S residential addresses in the same general area
 
 # Try it out!
-`pip3 install git+https://github.com/Lambda-Logan/address_hammer.git`
+`pip3 install git+https://github.com/Lambda-Logan/address_hammer.git` 
+
 or
+
 `pip install git+https://github.com/Lambda-Logan/address_hammer.git`
 
-There are two main tools: **`Hammer`** and **`Parser`**. 
+
+
+# There are two main tools: **`Hammer`** and **`Parser`**. 
 - A `Parser` takes a string and produces a `RawAddress` (which isn't hashable because it still might have typos and missing info).
 - A `Hammer` is trained on an iter of address strings and produces multiple `Address` (see below). As it already uses `Parser` internally, you should prefer using `Hammer` to `Parser`. The `Hammer` instance in your program will also remove duplicates and combine info bewteen equivalent addresses.
 
