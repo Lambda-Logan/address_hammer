@@ -1,3 +1,5 @@
+try it out with `pip3 install git+https://github.com/Lambda-Logan/address_hammer.git`
+
 # address_hammer
 > _Hammer messy addresses into something beautiful._
 
