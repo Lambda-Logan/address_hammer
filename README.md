@@ -33,6 +33,8 @@ or
 # `Hammer`
 ```python
 
+from address_hammer import Hammer
+
 addresses = ["123 W Main    Boston MA",
              "123   Main St Boston MA"]
  
@@ -113,6 +115,8 @@ class Address(NamedTuple):
 # `Parser`
 If you don't need to hash addresses, correct minor typos or merge duplicates, use `Parser`. Directly using `Parser` will produce a `RawAddress`. `RawAddress` is unhashable because it still might have missing info or typos.
 ```python
+from address_hammer import Parser
+
 p = Parser()
 print(p("999 8th blvd California CA 54321"))
 # >> RawAddress(city='CALIFORNIA', us_state='CA', house_number='999', st_name='8TH', st_suffix='BLVD', st_NESW=None, unit=None, zip_code='54321', orig='999 8th blvd California CA')
