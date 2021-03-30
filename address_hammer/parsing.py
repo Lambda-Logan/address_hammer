@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from __types__ import *
+from .__types__ import *
 
 from typing import Pattern, Match
 
 import re
 
-from address import RawAddress
-import address
-import __regex__ as regex
-from __zipper__ import Zipper, GenericInput, EndOfInputError
+from .address import RawAddress
+from . import address
+from . import __regex__ as regex
+from .__zipper__ import Zipper, GenericInput, EndOfInputError
 
 
 #TODO correctly handle all usps secondary unit identifiers and 1/2
@@ -348,7 +348,7 @@ def test():
     for a in __difficult_addresses__:
         p(a)
 
-    from address import example_addresses
+    from .address import example_addresses
     for a in example_addresses:
         a.reparse_test(p)
     zipless = Parser()

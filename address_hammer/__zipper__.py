@@ -1,5 +1,5 @@
 from __future__ import annotations
-from __types__ import *
+from .__types__ import *
 from typing import Generic
 
 class EndOfInputError(Exception):

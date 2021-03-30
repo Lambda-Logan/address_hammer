@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from __types__ import *
+from .__types__ import *
 
 SOFT_COMPONENTS = ["st_suffix", "st_NESW", "unit", "zip_code"]
 HARD_COMPONENTS = ["house_number", "st_name", "city", "us_state"]
@@ -111,7 +111,7 @@ class Address(NamedTuple):
         return self._asdict()
 
     def pretty(self)->str:
-        from __regex__ import normalize_whitespace
+        from .__regex__ import normalize_whitespace
         as_dict = self._asdict()
         softs = {"st_NESW":"",
                  "st_suffix":"",
@@ -399,10 +399,10 @@ class UniqTest(NamedTuple):
     this is a helper class to facilitate testing removal of duplicate addresses
     xs should be mapped to ys, otherwise it fails
     """
-    from parsing import Parser
+    from .parsing import Parser
     p: Parser
-    xs: t.Sequence[Address]
-    ys: t.Sequence[Address]
+    xs: Seq[Address]
+    ys: Seq[Address]
 
     @staticmethod
     def new(p:Parser)->UniqTest:
@@ -417,7 +417,7 @@ class UniqTest(NamedTuple):
         assert len(ys) == len(self.ys)
 
     
-    def run_with(self, d: t.Dict[str, t.List[str]]):
+    def run_with(self, d: Dict[str, List[str]]):
         f = HashableFactory.from_all_addresses(self.xs)        
         for add, add_strs in d.items():
             adds = f(self.p(add))
@@ -446,7 +446,7 @@ class UniqTest(NamedTuple):
         return self._replace(ys=(a for a in self.ys if a != y))
 
 def test():
-    from parsing import Parser
+    from .parsing import Parser
     p = Parser(known_cities=["City"])
     ambigs_1 = [
         "001 Street City MI",

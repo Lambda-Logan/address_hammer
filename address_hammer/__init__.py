@@ -1,6 +1,6 @@
-from address import Address, RawAddress, InvalidAddressError
-from parsing import Parser, ParseError, EndOfAddressError, smart_batch
-from hammer import Hammer
+from .address import Address, RawAddress, InvalidAddressError
+from .parsing import Parser, ParseError, EndOfAddressError
+from .hammer import Hammer
 """
 p = Parser(known_cities="Houston Dallas".split())
         

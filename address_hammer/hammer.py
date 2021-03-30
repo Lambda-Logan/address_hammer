@@ -1,8 +1,8 @@
 from __future__ import annotations
-from __types__ import *
-from address import Address, HashableFactory
-from fuzzy_string import FixTypos
-from parsing import Parser, ParseError, smart_batch
+from .__types__ import *
+from .address import Address, HashableFactory
+from .fuzzy_string import FixTypos
+from .parsing import Parser, ParseError, smart_batch
 
 Bag = Dict[str, int]
 
@@ -180,7 +180,7 @@ def test():
         ]
     ambigs_2 = ambigs_1 + ["001 W Street City MI"]
     hammer = Hammer(ambigs_1)
-    print(list(map(Address.Get.pretty, set(hammer))))
+    #print(list(map(Address.Get.pretty, set(hammer))))
     #print(list(map(print, map( Address.Get.pretty, join(hammer.ambigous_address_groups)))))
     #print(hammer["001 W Street Ave #4 City MI"].pretty())
 test()
