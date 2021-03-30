@@ -1,4 +1,4 @@
-try it out with `pip3 install git+https://github.com/Lambda-Logan/address_hammer.git`
+
 
 # address_hammer
 > _Hammer messy addresses into something beautiful._
@@ -10,7 +10,10 @@ This is a robust and simple tool for parsing and normalizing U.S residential add
 - have ever wanted to **safely hash messy addresses** that have missing information
 - have an advertising or volunteer outreach campaign involving many U.S residential addresses in the same general area
 
-
+# Try it out!
+`pip3 install git+https://github.com/Lambda-Logan/address_hammer.git`
+or
+`pip install git+https://github.com/Lambda-Logan/address_hammer.git`
 
 There are two main tools: **`Hammer`** and **`Parser`**. 
 - A `Parser` takes a string and produces a `RawAddress` (which isn't hashable because it still might have typos and missing info).
