@@ -56,7 +56,8 @@ class Hammer:
                  city_repair_level: int = 5,
                  street_repair_level: int = 5,
                  junk_cities: Seq[str] = [],
-                 junk_streets: Seq[str] = []):
+                 junk_streets: Seq[str] = [],
+                 check_batch_hash:bool = True):
         
         if city_repair_level > 10 or city_repair_level < 0:
             raise ValueError("The typo repair level must be between 0-10, not " + str(city_repair_level ))
@@ -117,17 +118,38 @@ class Hammer:
             streets = join([known_streets, 
                             filter(lambda s: cuttoff < st_name_bag.get(s, 0), st_name_bag.keys())])
             self.__repair_st__ = FixTypos(streets, cuttoff=street_repair_level)
+        
+        #MD5 SUM
+        if not check_batch_hash:
+            batch_hatch = ""
+        else:
+            from hashlib import md5
+            m = md5()
+            
+            to_hash_str =  [junk_cities, 
+                        junk_streets, 
+                        known_cities, 
+                        known_streets]
+            
+            for s in join(to_hash_str):
+                m.update(s.encode('utf-8'))
+            
+            for h in sorted(map(hash, addresses)):
+                m.update(int(h).to_bytes(8, 'big', signed=True))
+            
+            batch_hatch = m.hexdigest()
 
-        addresses = [self.fix_typos(a) for a in addresses]
+        addresses = [self.fix_typos(a, _bh_=batch_hatch) for a in addresses]
         self.p = Parser(known_cities=list(city_bag.keys()))
         self.__hashable_factory__ = HashableFactory.from_all_addresses(addresses)
         self.ambigous_address_groups = self.__hashable_factory__.fix_by_hand
         self.__addresses__ = set(join(map(self.zero_or_more, addresses)))
         self.parse_errors = parse_errors
 
-    def fix_typos(self, a:Address)->Address:
-        return a.replace(city=self.__repair_city__(a.city),
-                         st_name=self.__repair_st__(a.st_name))
+    def fix_typos(self, a:Address, _bh_: str = "")->Address:
+        return a.replace(**{"city": self.__repair_city__(a.city),
+                            "st_name": self.__repair_st__(a.st_name),
+                            "batch_hash": _bh_})
 
         #self.__hashable_factory__.fix_by_hand
 
@@ -180,7 +202,8 @@ def test():
         ]
     ambigs_2 = ambigs_1 + ["001 W Street City MI"]
     hammer = Hammer(ambigs_1)
+    (ambigs_2, hammer)
     #print(list(map(Address.Get.pretty, set(hammer))))
     #print(list(map(print, map( Address.Get.pretty, join(hammer.ambigous_address_groups)))))
     #print(hammer["001 W Street Ave #4 City MI"].pretty())
-test()
+#test()

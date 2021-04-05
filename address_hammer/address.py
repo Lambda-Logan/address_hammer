@@ -5,6 +5,7 @@ from .__types__ import *
 SOFT_COMPONENTS = ["st_suffix", "st_NESW", "unit", "zip_code"]
 HARD_COMPONENTS = ["house_number", "st_name", "city", "us_state"]
 
+COMPARE_BATCH_HASHES = True
 
 class InvalidAddressError(Exception):
     orig: str
@@ -25,6 +26,15 @@ def get(d: Dict[K, V], k: K, v: V)-> V:
         return d[k]
     except KeyError:
         return v
+
+def __compare_batch_hashes__(s: Address, other: Address):
+    from warnings import warn
+    if s.batch_hash == "" or other.batch_hash == "":
+        msg = f"Tried operation on two addresses without using the same 'Hammer' instance: '{s.batch_hash}' and '{other.batch_hash}'"
+        #warn(msg)
+    elif s.batch_hash != other.batch_hash:
+        msg = f"Tried operation on two addresses from different batches: '{s.batch_hash}' and '{other.batch_hash}'"
+        warn(msg)
 class Address(NamedTuple):
     house_number: str
     st_name: str
@@ -35,11 +45,13 @@ class Address(NamedTuple):
     us_state: str
     zip_code: Opt[str]
     orig: str
+    batch_hash: str = ""
 
     def __hash__(self) -> int:
         return hash((self.hard_components(), self.soft_components()))
 
     def __eq__(self, other: Address)-> bool:
+        Address.__compare_batch_hashes(self, other)
         if self.__class__ != other.__class__: 
             #don't use isinstance because equality is not defined for Address, RawAddress
             return False
@@ -58,6 +70,18 @@ class Address(NamedTuple):
 
     def __ne__(self, other: Address)-> bool:
         return not (self == other)
+
+    @staticmethod
+    def __compare_batch_hashes(s: Address, other: Address)->None:
+        __compare_batch_hashes__(s,other)
+        return None
+
+    @staticmethod
+    def __should_compare_batch_hashes(should:bool)->None:
+        if should:
+            Address.__compare_batch_hashes = __compare_batch_hashes
+        else:
+            Address.__compare_batch_hashes = lambda _,__: None
 
     def hard_components(self)->Tuple[str, str, str, str]:
         return (self.house_number, 
@@ -106,9 +130,9 @@ class Address(NamedTuple):
                "st_NESW":opt_sum(self.st_NESW, f("st_NESW")), 
                "unit":opt_sum(self.unit, f("unit")),
                "zip_code":opt_sum(self.zip_code, f("zip_code"))})
-               
-    def jsonize(self)->Dict[str,str]:
-        return self._asdict()
+    
+
+
 
     def pretty(self)->str:
         from .__regex__ import normalize_whitespace
@@ -444,6 +468,10 @@ class UniqTest(NamedTuple):
     
     def without_y(self, y:Address)->UniqTest:
         return self._replace(ys=(a for a in self.ys if a != y))
+
+def json_test():
+    for a in example_addresses:
+        assert Address.f
 
 def test():
     from .parsing import Parser
