@@ -1,3 +1,5 @@
+
+
 # address_hammer
 > _Hammer messy addresses into something beautiful._
 
@@ -8,9 +10,16 @@ This is a robust and simple tool for parsing and normalizing U.S residential add
 - have ever wanted to **safely hash messy addresses** that have missing information
 - have an advertising or volunteer outreach campaign involving many U.S residential addresses in the same general area
 
+# Try it out!
+`pip3 install git+https://github.com/Lambda-Logan/address_hammer.git` 
+
+or
+
+`pip install git+https://github.com/Lambda-Logan/address_hammer.git`
 
 
-There are two main tools: **`Hammer`** and **`Parser`**. 
+
+# There are two main tools: **`Hammer`** and **`Parser`**. 
 - A `Parser` takes a string and produces a `RawAddress` (which isn't hashable because it still might have typos and missing info).
 - A `Hammer` is trained on an iter of address strings and produces multiple `Address` (see below). As it already uses `Parser` internally, you should prefer using `Hammer` to `Parser`. The `Hammer` instance in your program will also remove duplicates and combine info bewteen equivalent addresses.
 
@@ -23,6 +32,8 @@ There are two main tools: **`Hammer`** and **`Parser`**.
 
 # `Hammer`
 ```python
+
+from address_hammer import Hammer
 
 addresses = ["123 W Main    Boston MA",
              "123   Main St Boston MA"]
@@ -104,6 +115,8 @@ class Address(NamedTuple):
 # `Parser`
 If you don't need to hash addresses, correct minor typos or merge duplicates, use `Parser`. Directly using `Parser` will produce a `RawAddress`. `RawAddress` is unhashable because it still might have missing info or typos.
 ```python
+from address_hammer import Parser
+
 p = Parser()
 print(p("999 8th blvd California CA 54321"))
 # >> RawAddress(city='CALIFORNIA', us_state='CA', house_number='999', st_name='8TH', st_suffix='BLVD', st_NESW=None, unit=None, zip_code='54321', orig='999 8th blvd California CA')
