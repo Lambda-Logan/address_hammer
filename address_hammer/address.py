@@ -72,17 +72,22 @@ class Address(NamedTuple):
         return not (self == other)
 
     def __str_softs__(self)->List[str]:
-        return list(filter(None, self.soft_components()))
+        def x(s:Opt[str])->str:
+            if not s:
+                return ""
+            return s
+        return list(map(x, self.soft_components()))
 
     def __gt__(self, other: Address)->bool:
-        a:bool = self.hard_components() > other.hard_components()
-        b:bool = self.__str_softs__() > other.__str_softs__()
-        return a and b 
+        #TODO use soft components in __lt__ and __gt__
+        a = self.hard_components()#, self.__str_softs__()
+        b = other.hard_components()#, other.__str_softs__()
+        return a > b 
 
     def __lt__(self, other: Address)->bool:
-        a:bool = self.hard_components() < other.hard_components()
-        b:bool = self.__str_softs__() < other.__str_softs__()
-        return a and b 
+        a = self.hard_components()#, self.soft_components()
+        b = other.hard_components()#, other.soft_components()
+        return a < b 
 
     @staticmethod
     def __compare_batch_hashes(s: Address, other: Address)->None:
@@ -522,9 +527,12 @@ def test():
         xs=tuple(map(p, ambigs_1)),
         ys=()
     )
-
-    sorted(example_addresses)
-    sorted(example_addresses, reverse=True)
+    from random import shuffle
+    s = sorted(example_addresses)
+    ss = example_addresses.copy()
+    for _ in range(10):
+        shuffle(ss)
+        assert sorted(ss) == s
     #TODO pass the following test
     #a.run_with({"001 e street  st city mi":["001 E Street St Apt 1 City MI", "001 E Street St Apt 0 City MI"]})
 

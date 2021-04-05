@@ -138,7 +138,7 @@ class Hammer:
             #print(len(list(filter(None, addresses))))
             #print(list(map(Address.Get.pretty, addresses)))
             #addresses = sorted(filter(None, addresses))
-            for a in addresses:
+            for a in sorted(addresses):
                 for s in a.hard_components():
                     m.update(s.encode('utf-8'))
                 for s in a.soft_components():
@@ -205,6 +205,8 @@ def hash_test():
     from random import shuffle
     exs = exs.copy()
     h = Hammer(exs)
+    a = list(h)
+    b = Hammer(a)
     assert h.batch_hash == Hammer(list(h)).batch_hash
     switch = [(0,-1), (2,3), (1,5)]
     for a, b in switch:
