@@ -71,6 +71,19 @@ class Address(NamedTuple):
     def __ne__(self, other: Address)-> bool:
         return not (self == other)
 
+    def __str_softs__(self)->List[str]:
+        return list(filter(None, self.soft_components()))
+
+    def __gt__(self, other: Address)->bool:
+        a:bool = self.hard_components() > other.hard_components()
+        b:bool = self.__str_softs__() > other.__str_softs__()
+        return a and b 
+
+    def __lt__(self, other: Address)->bool:
+        a:bool = self.hard_components() < other.hard_components()
+        b:bool = self.__str_softs__() < other.__str_softs__()
+        return a and b 
+
     @staticmethod
     def __compare_batch_hashes(s: Address, other: Address)->None:
         __compare_batch_hashes__(s,other)
@@ -510,6 +523,8 @@ def test():
         ys=()
     )
 
+    sorted(example_addresses)
+    sorted(example_addresses, reverse=True)
     #TODO pass the following test
     #a.run_with({"001 e street  st city mi":["001 E Street St Apt 1 City MI", "001 E Street St Apt 0 City MI"]})
 
