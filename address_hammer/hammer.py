@@ -247,7 +247,6 @@ def hash_test():
     shuffle(xs)
     h.batch_checksum == Hammer(xs).batch_checksum
 
-
 def test():
     hash_test()
     ambigs_1 = [
