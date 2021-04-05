@@ -110,6 +110,27 @@ class Address(NamedTuple):
     def soft_components(self)->Seq[Opt[str]]:
         return (self.st_suffix, self.st_NESW, self.unit, self.zip_code)
 
+    def to_dict(self)->Dict[str,str]:
+        d = self._asdict()
+        if isinstance(self, RawAddress):
+            d["is_raw"] = True
+        else: 
+            d["is_raw"] = False
+        return d
+
+    @staticmethod
+    def from_dict(d: Dict[str,Any])->Address:
+        is_raw:Any = d["is_raw"]
+        del d["is_raw"]
+        if is_raw==True:
+            r = RawAddress(**d)
+        elif is_raw==False:
+            r = Address(**d)
+        else:
+            raise Exception("invalid dict format for Address")
+        d["is_raw"] = is_raw
+        return r
+
     def reparse_test(self, parse: Fn[[str], Address]):
         s: Dict[str, str] = self._asdict()
         d: Dict[str, str] = parse(self.orig)._asdict()
@@ -209,6 +230,7 @@ class Address(NamedTuple):
         zip_code: Fn[[Address], Opt[str]] = lambda a: a.zip_code
         orig: Fn[[Address], str] = lambda a: a.orig
         pretty: Fn[[Address], str] = lambda a: a.pretty()
+        dict: Fn[[Address], Dict[str, Any]] = lambda a: a.to_dict()
 
 
 class RawAddress(Address):
@@ -533,6 +555,13 @@ def test():
     for _ in range(10):
         shuffle(ss)
         assert sorted(ss) == s
+
+    def json_reparse(a:Address)->Address:
+        from json import loads, dumps
+        return Address.from_dict(loads(dumps(a.to_dict())))
+
+    assert example_addresses == [json_reparse(a) for a in example_addresses]
+
     #TODO pass the following test
     #a.run_with({"001 e street  st city mi":["001 E Street St Apt 1 City MI", "001 E Street St Apt 0 City MI"]})
 
