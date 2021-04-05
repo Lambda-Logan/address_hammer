@@ -15,6 +15,7 @@ def bag_from(ss: Iter[str])->Bag:
     for s in ss:
         d[s] = d.get(s, 0) + 1
     return d
+MD5_SALT = b"e3737f1156529b4d"
 
 class Hammer:
     """
@@ -49,6 +50,7 @@ class Hammer:
     ambigous_address_groups: List[List[Address]]
     __addresses__: Set[Address]
     __hashable_factory__: HashableFactory
+    batch_hash: str
     def __init__(self, 
                  input_addresses: Iter[Union[str, Address]],
                  known_cities: Seq[str] = [],
@@ -133,18 +135,25 @@ class Hammer:
             
             for s in join(to_hash_str):
                 m.update(s.encode('utf-8'))
-            
-            for h in sorted(map(hash, addresses)):
-                m.update(int(h).to_bytes(8, 'big', signed=True))
+            #print(len(list(filter(None, addresses))))
+            #print(list(map(Address.Get.pretty, addresses)))
+            #addresses = sorted(filter(None, addresses))
+            for a in addresses:
+                for s in a.hard_components():
+                    m.update(s.encode('utf-8'))
+                for s in a.soft_components():
+                    if s:
+                        m.update(s.encode('utf-8'))
             
             batch_hatch = m.hexdigest()
 
-        addresses = [self.fix_typos(a, _bh_=batch_hatch) for a in addresses]
+        addresses = [self.fix_typos(a) for a in addresses]
         self.p = Parser(known_cities=list(city_bag.keys()))
         self.__hashable_factory__ = HashableFactory.from_all_addresses(addresses)
         self.ambigous_address_groups = self.__hashable_factory__.fix_by_hand
         self.__addresses__ = set(join(map(self.zero_or_more, addresses)))
         self.parse_errors = parse_errors
+        self.batch_hash = batch_hatch
 
     def fix_typos(self, a:Address, _bh_: str = "")->Address:
         return a.replace(**{"city": self.__repair_city__(a.city),
@@ -190,8 +199,57 @@ class Hammer:
             return self[a]
         except KeyError:
             return d
+def hash_test():
+    from .address import example_addresses as exs
+    from .address import SOFT_COMPONENTS
+    from random import shuffle
+    exs = exs.copy()
+    h = Hammer(exs)
+    assert h.batch_hash == Hammer(list(h)).batch_hash
+    switch = [(0,-1), (2,3), (1,5)]
+    for a, b in switch:
+        exs[a], exs[b] = exs[b], exs[a]
+        assert h.batch_hash == Hammer(exs).batch_hash
+        exs[a], exs[b] = exs[b], exs[a]
+    assert h.batch_hash == Hammer(exs).batch_hash
+
+    assert Hammer(exs[:7]).batch_hash == r"c0c04f4b20d2a1c9d48be55598f0662b"
+    assert Hammer(exs[2:6]).batch_hash == r"656e3a4954a688062d89708f0eb53436"
+
+    def modify(a: str, b:Opt[str])->Fn[[Address], Address]:
+        return lambda address: address.replace(**{a:b})
+
+    funcs: List[Fn[[Address], Address]] = [
+        modify("st_name", ""),
+        modify("house_number", "z"),
+        modify("unit", "Lot 4594653657555949"),
+        modify("us_state", "ZZ"),
+        modify("st_suffix", "ZZ")
+    ]
+    
+    idxs = [0,2,4,6]
+    for idx in idxs:
+        a = exs[idx]
+        for f in funcs:
+            exs[idx] = f(a)
+            assert h.batch_hash != Hammer(exs).batch_hash
+        exs[idx] = a
+    assert h.batch_hash == Hammer(exs).batch_hash
+
+
+    xs = exs + exs
+    for soft in SOFT_COMPONENTS:
+        f = modify(soft, None)
+        for idx in idxs:
+            #print(f(exs[idx]))
+            xs.append(f(exs[idx]))
+
+    shuffle(xs)
+    h.batch_hash == Hammer(xs).batch_hash
+
 
 def test():
+    hash_test()
     ambigs_1 = [
             "001 Street City MI",
             "001 E Streeet City MI",
