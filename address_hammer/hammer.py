@@ -50,7 +50,7 @@ class Hammer:
     ambigous_address_groups: List[List[Address]]
     __addresses__: Set[Address]
     __hashable_factory__: HashableFactory
-    batch_hash: str
+    batch_checksum: str
     def __init__(self, 
                  input_addresses: Iter[Union[str, Address]],
                  known_cities: Seq[str] = [],
@@ -59,7 +59,7 @@ class Hammer:
                  street_repair_level: int = 5,
                  junk_cities: Seq[str] = [],
                  junk_streets: Seq[str] = [],
-                 check_batch_hash:bool = True):
+                 check_batch_checksum:bool = True):
         
         if city_repair_level > 10 or city_repair_level < 0:
             raise ValueError("The typo repair level must be between 0-10, not " + str(city_repair_level ))
@@ -122,7 +122,7 @@ class Hammer:
             self.__repair_st__ = FixTypos(streets, cuttoff=street_repair_level)
         
         #MD5 SUM
-        if not check_batch_hash:
+        if not check_batch_checksum:
             batch_hatch = ""
         else:
             from hashlib import md5
@@ -153,12 +153,12 @@ class Hammer:
         self.ambigous_address_groups = self.__hashable_factory__.fix_by_hand
         self.__addresses__ = set(join(map(self.zero_or_more, addresses)))
         self.parse_errors = parse_errors
-        self.batch_hash = batch_hatch
+        self.batch_checksum = batch_hatch
 
     def fix_typos(self, a:Address, _bh_: str = "")->Address:
         return a.replace(**{"city": self.__repair_city__(a.city),
                             "st_name": self.__repair_st__(a.st_name),
-                            "batch_hash": _bh_})
+                            "batch_checksum": _bh_})
 
         #self.__hashable_factory__.fix_by_hand
 
@@ -205,18 +205,16 @@ def hash_test():
     from random import shuffle
     exs = exs.copy()
     h = Hammer(exs)
-    a = list(h)
-    b = Hammer(a)
-    assert h.batch_hash == Hammer(list(h)).batch_hash
+    assert h.batch_checksum == Hammer(list(h)).batch_checksum
     switch = [(0,-1), (2,3), (1,5)]
     for a, b in switch:
         exs[a], exs[b] = exs[b], exs[a]
-        assert h.batch_hash == Hammer(exs).batch_hash
+        assert h.batch_checksum == Hammer(exs).batch_checksum
         exs[a], exs[b] = exs[b], exs[a]
-    assert h.batch_hash == Hammer(exs).batch_hash
+    assert h.batch_checksum == Hammer(exs).batch_checksum
 
-    assert Hammer(exs[:7]).batch_hash == r"c0c04f4b20d2a1c9d48be55598f0662b"
-    assert Hammer(exs[2:6]).batch_hash == r"656e3a4954a688062d89708f0eb53436"
+    assert Hammer(exs[:7]).batch_checksum == r"c0c04f4b20d2a1c9d48be55598f0662b"
+    assert Hammer(exs[2:6]).batch_checksum == r"656e3a4954a688062d89708f0eb53436"
 
     def modify(a: str, b:Opt[str])->Fn[[Address], Address]:
         return lambda address: address.replace(**{a:b})
@@ -234,9 +232,9 @@ def hash_test():
         a = exs[idx]
         for f in funcs:
             exs[idx] = f(a)
-            assert h.batch_hash != Hammer(exs).batch_hash
+            assert h.batch_checksum != Hammer(exs).batch_checksum
         exs[idx] = a
-    assert h.batch_hash == Hammer(exs).batch_hash
+    assert h.batch_checksum == Hammer(exs).batch_checksum
 
 
     xs = exs + exs
@@ -247,7 +245,7 @@ def hash_test():
             xs.append(f(exs[idx]))
 
     shuffle(xs)
-    h.batch_hash == Hammer(xs).batch_hash
+    h.batch_checksum == Hammer(xs).batch_checksum
 
 
 def test():

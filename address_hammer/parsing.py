@@ -342,6 +342,7 @@ def test():
             "0 Street Apt 3 City MI",
             "0 Street Apt 0 City MI",
             "1 Street City MI"]
+    (adds)
     #print([[a.pretty() for a in a_s] for a_s in d.values()])
     #print([a.pretty() for a in RawAddress.merge_duplicates(map(p, adds))])
     p = Parser(known_cities = ["Zamalakoo", "Grand Rapids"])

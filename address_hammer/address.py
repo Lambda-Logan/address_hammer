@@ -27,13 +27,13 @@ def get(d: Dict[K, V], k: K, v: V)-> V:
     except KeyError:
         return v
 
-def __compare_batch_hashes__(s: Address, other: Address):
+def __compare_batch_checksums__(s: Address, other: Address):
     from warnings import warn
-    if s.batch_hash == "" or other.batch_hash == "":
-        msg = f"Tried operation on two addresses without using the same 'Hammer' instance: '{s.batch_hash}' and '{other.batch_hash}'"
+    if s.batch_checksum == "" or other.batch_checksum == "":
+        msg = f"Tried operation on two addresses without using the same 'Hammer' instance: '{s.batch_checksum}' and '{other.batch_checksum}'"
         #warn(msg)
-    elif s.batch_hash != other.batch_hash:
-        msg = f"Tried operation on two addresses from different batches: '{s.batch_hash}' and '{other.batch_hash}'"
+    elif s.batch_checksum != other.batch_checksum:
+        msg = f"Tried operation on two addresses from different batches: '{s.batch_checksum}' and '{other.batch_checksum}'"
         warn(msg)
 class Address(NamedTuple):
     house_number: str
@@ -45,13 +45,13 @@ class Address(NamedTuple):
     us_state: str
     zip_code: Opt[str]
     orig: str
-    batch_hash: str = ""
+    batch_checksum: str = ""
 
     def __hash__(self) -> int:
         return hash((self.hard_components(), self.soft_components()))
 
     def __eq__(self, other: Address)-> bool:
-        Address.__compare_batch_hashes(self, other)
+        Address.__compare_batch_checksums(self, other)
         if self.__class__ != other.__class__: 
             #don't use isinstance because equality is not defined for Address, RawAddress
             return False
@@ -90,16 +90,16 @@ class Address(NamedTuple):
         return a < b 
 
     @staticmethod
-    def __compare_batch_hashes(s: Address, other: Address)->None:
-        __compare_batch_hashes__(s,other)
+    def __compare_batch_checksums(s: Address, other: Address)->None:
+        __compare_batch_checksums__(s,other)
         return None
 
     @staticmethod
-    def __should_compare_batch_hashes(should:bool)->None:
+    def __should_compare_batch_checksums(should:bool)->None:
         if should:
-            Address.__compare_batch_hashes = __compare_batch_hashes
+            Address.__compare_batch_checksums = __compare_batch_checksums
         else:
-            Address.__compare_batch_hashes = lambda _,__: None
+            Address.__compare_batch_checksums = lambda _,__: None
 
     def hard_components(self)->Tuple[str, str, str, str]:
         return (self.house_number, 

@@ -20,6 +20,6 @@ b =  ["123 Straight Houuston TX", #typo
         "123 Dallas Houston TX" ]
 """
 #TODO make way to toggle if addresses should be compared
-#shoud_compare_batch_hashes = Address.__should_compare_batch_hashes
+#shoud_compare_batch_checksums = Address.__should_compare_batch_checksums
 
 (EndOfAddressError, Address, Parser, ParseError, RawAddress, InvalidAddressError, Hammer)
