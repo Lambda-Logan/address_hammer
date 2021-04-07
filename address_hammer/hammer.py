@@ -25,6 +25,7 @@ class ChecksumMismatch(Exception):
         super().__init__(msg)
 
 def check_checksum(a: str, b:str):
+
     if a==CHECKSUM_IGNORE or b ==CHECKSUM_IGNORE:
         return None
     if a != b:
@@ -72,7 +73,7 @@ class Hammer:
                  street_repair_level: int = 5,
                  junk_cities: Seq[str] = [],
                  junk_streets: Seq[str] = [],
-                 check_batch_checksum:bool = True):
+                 make_batch_checksum:bool = True):
         
         if city_repair_level > 10 or city_repair_level < 0:
             raise ValueError("The typo repair level must be between 0-10, not " + str(city_repair_level ))
@@ -135,7 +136,7 @@ class Hammer:
             self.__repair_st__ = FixTypos(streets, cuttoff=street_repair_level)
         
         #MD5 SUM
-        if not check_batch_checksum:
+        if not make_batch_checksum:
             checksum = ""
         else:
             from hashlib import md5
