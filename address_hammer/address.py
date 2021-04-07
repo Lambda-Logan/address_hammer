@@ -27,14 +27,8 @@ def get(d: Dict[K, V], k: K, v: V)-> V:
     except KeyError:
         return v
 
-def __compare_batch_checksums__(s: Address, other: Address):
-    from warnings import warn
-    if s.batch_checksum == "" or other.batch_checksum == "":
-        msg = f"Tried operation on two addresses without using the same 'Hammer' instance: '{s.batch_checksum}' and '{other.batch_checksum}'"
-        #warn(msg)
-    elif s.batch_checksum != other.batch_checksum:
-        msg = f"Tried operation on two addresses from different batches: '{s.batch_checksum}' and '{other.batch_checksum}'"
-        warn(msg)
+
+CHECKSUM_IGNORE = ""
 class Address(NamedTuple):
     house_number: str
     st_name: str
@@ -51,7 +45,6 @@ class Address(NamedTuple):
         return hash((self.hard_components(), self.soft_components()))
 
     def __eq__(self, other: Address)-> bool:
-        Address.__compare_batch_checksums(self, other)
         if self.__class__ != other.__class__: 
             #don't use isinstance because equality is not defined for Address, RawAddress
             return False
@@ -88,18 +81,6 @@ class Address(NamedTuple):
         a = self.hard_components()#, self.soft_components()
         b = other.hard_components()#, other.soft_components()
         return a < b 
-
-    @staticmethod
-    def __compare_batch_checksums(s: Address, other: Address)->None:
-        __compare_batch_checksums__(s,other)
-        return None
-
-    @staticmethod
-    def __should_compare_batch_checksums(should:bool)->None:
-        if should:
-            Address.__compare_batch_checksums = __compare_batch_checksums
-        else:
-            Address.__compare_batch_checksums = lambda _,__: None
 
     def hard_components(self)->Tuple[str, str, str, str]:
         return (self.house_number, 
@@ -231,6 +212,21 @@ class Address(NamedTuple):
         orig: Fn[[Address], str] = lambda a: a.orig
         pretty: Fn[[Address], str] = lambda a: a.pretty()
         dict: Fn[[Address], Dict[str, Any]] = lambda a: a.to_dict()
+        batch_checksum: Fn[[Address], str] = lambda a: a.batch_checksum
+    class Set:
+        __make__: Fn[[str], Fn[[Opt[str]], Fn[[Address], Address]]] = lambda label: (lambda s: (lambda a: a.replace(**{label:s})))
+        house_number: Fn[[str], Fn[[Address], Address]] = __make__("house_number")
+        st_name: Fn[[str], Fn[[Address], Address]] = __make__("st_name")
+        st_suffix: Fn[[Opt[str]], Fn[[Address], Address]] = __make__("st_suffix")
+        st_NESW: Fn[[Opt[str]], Fn[[Address], Address]] = __make__("st_NESW")
+        unit: Fn[[Opt[str]], Fn[[Address], Address]] = __make__("unit")
+        city: Fn[[str], Fn[[Address], Address]] = __make__("city")
+        us_state: Fn[[str], Fn[[Address], Address]] = __make__("us_state")
+        zip_code: Fn[[Opt[str]], Fn[[Address], Address]] = __make__("zip_code")
+        orig: Fn[[str], Fn[[Address], Address]] = __make__("orig")
+        batch_checksum: Fn[[str], Fn[[Address], Address]] = __make__("batch_checksum")
+        ignore_checksum: Fn[[Address], Address] = __make__("batch_checksum")(CHECKSUM_IGNORE)
+
 
 
 class RawAddress(Address):

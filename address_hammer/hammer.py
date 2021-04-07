@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .__types__ import *
-from .address import Address, HashableFactory
+from .address import Address, HashableFactory, CHECKSUM_IGNORE
 from .fuzzy_string import FixTypos
 from .parsing import Parser, ParseError, smart_batch
 
@@ -17,6 +17,19 @@ def bag_from(ss: Iter[str])->Bag:
     return d
 MD5_SALT = b"e3737f1156529b4d"
 
+class ChecksumMismatch(Exception):
+    msg: str
+    def __init__(self, a: str, b:str) -> None:
+        msg = f"'{a}' and '{b}'"
+        self.msg = msg
+        super().__init__(msg)
+
+def check_checksum(a: str, b:str):
+    if a==CHECKSUM_IGNORE or b ==CHECKSUM_IGNORE:
+        return None
+    if a != b:
+        raise ChecksumMismatch(a, b)
+    
 class Hammer:
     """
     A Hammer normalizes addresses so that all addresses have completed information and are hashable.
@@ -123,7 +136,7 @@ class Hammer:
         
         #MD5 SUM
         if not check_batch_checksum:
-            batch_hatch = ""
+            checksum = ""
         else:
             from hashlib import md5
             m = md5()
@@ -145,15 +158,15 @@ class Hammer:
                     if s:
                         m.update(s.encode('utf-8'))
             
-            batch_hatch = m.hexdigest()
-
+            checksum = m.hexdigest()
+        self.batch_checksum = checksum
         addresses = [self.fix_typos(a) for a in addresses]
         self.p = Parser(known_cities=list(city_bag.keys()))
         self.__hashable_factory__ = HashableFactory.from_all_addresses(addresses)
         self.ambigous_address_groups = self.__hashable_factory__.fix_by_hand
         self.__addresses__ = set(join(map(self.zero_or_more, addresses)))
         self.parse_errors = parse_errors
-        self.batch_checksum = batch_hatch
+        
 
     def fix_typos(self, a:Address, _bh_: str = "")->Address:
         return a.replace(**{"city": self.__repair_city__(a.city),
@@ -161,12 +174,25 @@ class Hammer:
                             "batch_checksum": _bh_})
 
         #self.__hashable_factory__.fix_by_hand
+    
+    def map(self, f: Fn[[Address], Address])->Hammer:
+        h= Hammer([])
+        h.batch_checksum = self.batch_checksum
+        h.parse_errors = self.parse_errors
+        h.p = self.p
+        h.ambigous_address_groups = self.ambigous_address_groups
+        h.__addresses__ = set(map(f, self.__addresses__))
+        h.__hashable_factory__ = self.__hashable_factory__
+        return h
 
     def __getitem__(self, a: Union[Address, str]) -> Address:
         import warnings
+        if isinstance(a, Address):
+            check_checksum(self.batch_checksum, a.batch_checksum)
         if isinstance(a, str):
             a = self.p(a)
         a = self.fix_typos(a)
+
         adds = self.__hashable_factory__(a)
         if len(adds) == 0:
             #return None
@@ -190,7 +216,9 @@ class Hammer:
         return iter(self.__addresses__)
 
     def zero_or_more(self, a: Union[Address, str]) -> List[Address]:
-        if isinstance(a, str):
+        if isinstance(a, Address):
+            check_checksum(self.batch_checksum, a.batch_checksum)
+        else:# isinstance(a, str):
             a = self.p(a)
         return self.__hashable_factory__(a)
 
@@ -203,9 +231,9 @@ def hash_test():
     from .address import example_addresses as exs
     from .address import SOFT_COMPONENTS
     from random import shuffle
-    exs = exs.copy()
+    exs = list(map(Address.Set.ignore_checksum, exs))
     h = Hammer(exs)
-    assert h.batch_checksum == Hammer(list(h)).batch_checksum
+    assert h.batch_checksum == Hammer(h.__addresses__).batch_checksum
     switch = [(0,-1), (2,3), (1,5)]
     for a, b in switch:
         exs[a], exs[b] = exs[b], exs[a]
