@@ -173,6 +173,7 @@ class Zipper(Generic[I,O]):
                 pass
         
         return self
+
     
     def consume_with(self,
                   func: Fn[[I], Seq[O]],
@@ -237,6 +238,54 @@ class Zipper(Generic[I,O]):
         passed = " ".join(map(str,leftover))== _l
         if not passed:
             raise Exception(" ".join(["zipper", "'"+name+"'", "failed LEFTOVER", str(leftover), "\n", str(_l)]))
+
+def x(_z: Zipper[Seq[I],O],
+    _funcs: Iter[Fn[[Zipper[I, O]], Zipper[I, O]]])->Zipper[I,O]:
+    leftover: GenericInput[Seq[I]] = _z.leftover
+    z: Zipper[I,O] = Zipper(leftover=GenericInput([]), results=_z.results)
+    funcs: Iter[Fn[[Zipper[I, O]], Zipper[I, O]]] = iter(_funcs)
+    for seq in leftover:
+        l = GenericInput(seq)
+        while not l.empty():
+            try:
+                f = next(funcs)
+            except StopIteration:
+                return z
+            y: Zipper[I,O] = Zipper(leftover=l, results=z.results)
+            z: Zipper[I,O] = f(y)
+            l = z.leftover
+    return z
+
+    
+
+
+class Apply:
+    @staticmethod
+    def consume_with(func: Fn[[I], Seq[O]],
+                    ex_types: Seq[Type[Exception]] = [Uncatchable])  ->  Fn[[Zipper[I,O]], Zipper[I,O]]:
+        return lambda z: z.takewhile(func, ex_types=ex_types, single=True)
+    
+    @staticmethod
+    def takewhile(pred_arrow: Fn[[I], Seq[O]],
+                  single: bool = False,
+                  ex_types: Seq[Type[Exception]] = [Uncatchable])  ->  Fn[[Zipper[I,O]], Zipper[I,O]]:    
+        return lambda z: z.takewhile(pred_arrow, ex_types=ex_types, single=single)
+
+    @staticmethod
+    def reduce(funcs: Iter[Fn[[Zipper[I,O]], Zipper[I,O]]])->Fn[[Zipper[I,O]], Zipper[I,O]]:
+        def _(z: Zipper[I,O])->Zipper[I,O]:
+            for f in funcs:
+                if z.leftover.empty():
+                    break
+                z = f(z)
+            return z
+        return _
+
+    @staticmethod
+    def chomp_n(n: int,
+                  list_func: Fn[[Seq[I]],Seq[O]], #Idk how to typecheck [*args: I]
+                  ex_types: Seq[Type[Exception]] = [Uncatchable])->Fn[[Zipper[I,O]], Zipper[I,O]]:
+        return lambda z: z.chomp_n(n, list_func=list_func, ex_types=ex_types)
 
 def should_throw(name: str, ex_type: Type[Exception], f: Fn[[],Any]):
     try:

@@ -10,4 +10,14 @@ def all_tests():
     parsing_test()
     fuzzy_string_test()
     hammer_test()
-all_tests()
+#all_tests()
+from .parsing import Parser
+from .address import example_addresses as exs
+print(len(exs))
+p = Parser()
+for _ in range(5000):
+    for a in exs:
+        try:
+            p(a.orig,checked=True)
+        except:
+            pass

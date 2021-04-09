@@ -6,7 +6,7 @@ from typing import Pattern, Match
 
 import re
 
-from .address import RawAddress
+from .address import Address, RawAddress
 from . import address
 from . import __regex__ as regex
 from .__zipper__ import Zipper, GenericInput, EndOfInputError
@@ -55,6 +55,8 @@ def __make_stops_on__(stop_patterns: Iter[Pattern[str]])-> Fn[[str], bool]:
         return False
     return stops_on
 
+
+
 ArrowParse = Fn[[str], Seq[ParseResult]]
 
 class AddressComponent(NamedTuple):
@@ -98,6 +100,7 @@ unit_types: List[str] = ["#", "APT", "BLDG", "STE", "UNIT", "RM", "DEPT", "TRLR"
 unit_R = re.compile(regex.or_(unit_types))
 unit_identifier_R = re.compile(r"\#?\s*(\d+[A-Z]?|[A-Z]\d*)")
 
+zip_code_R = re.compile(r"\d{5}")
 
 _HOUSE_NUMBER = AddressComponent(
                  label="house_number", #123 1/3 Pine St
@@ -140,7 +143,7 @@ _US_STATE = AddressComponent(
 
 _ZIP_CODE = AddressComponent(
                 label="zip_code",
-                compiled_pattern=re.compile(r"\d{5}")).arrow_parse()
+                compiled_pattern=zip_code_R).arrow_parse()
 
 address_midpoint_R = re.compile(regex.or_(st_suffices + st_NESWs + unit_types))
 def str_to_opt(s:Opt[str])->Opt[str]:
@@ -152,7 +155,12 @@ def str_to_opt(s:Opt[str])->Opt[str]:
 def city_repl(s:Match[str])->str:
     return " "+s.group(0).strip().replace(" ", "_")+" "
 Zip = Zipper[str, str]
+
+
+
+
 class Parser:
+
     """
     A callable address parser. 
     In general, prefer using the Hammer class instead of calling the parser directly.
@@ -180,6 +188,7 @@ class Parser:
         
         "123 Dallas Houston TX"    # # the street is recognized as a city (and unfortunately there is not an identifier bewteen the street and city)
     """
+    __ex_types__ = {"ex_types":tuple([ParseError])}
     blank_parse: Opt[Parser]
     city: Fn[[str], Seq[ParseResult]]
     st_name: Fn[[str], Seq[ParseResult]]
@@ -212,57 +221,33 @@ class Parser:
         else:
             self.st_name = __make_st_name__()
 
-    @staticmethod
-    def __tokenize__(s:str)->str:
+
+    def __tokenize__(self,s:str)->str:
         s = s.replace(",", " ")
         #s = re.sub(p,s," ")
         s = regex.normalize_whitespace(regex.remove_punc(s).upper())
         s = s.replace("#", "APT ")
         s = s.replace("APT APT", "APT")
+        if self.known_cities_R:
+            s = re.sub(self.known_cities_R, city_repl, s) 
         return s
     @staticmethod
     def __city_orig__(s:str)->str:
         s =  " ".join([regex.titleize(word) for word in s.split("_")] )
         #print(s)
         return s
-    def __call__(self, _s: str, checked:bool=True)->RawAddress:
-        if self.blank_parse != None:
-            try:
-                return self.blank_parse(_s, checked=checked)
-            except:
-                pass
-        s = self.__tokenize__(_s)
-        
-        if self.known_cities_R:
-            s = re.sub(self.known_cities_R, city_repl, s) 
-            #print(s)
-            pass
-        p = {"ex_types":tuple([ParseError])} #TODO make Zipper.takewhile ignore exceptions after 1 consumed???
-        try:
-            z:Zipper[str, ParseResult]=Zipper(GenericInput(data=s.split()))\
-                    .consume_with(_HOUSE_NUMBER, **p)\
-                    .consume_with(_ST_NESW, **p)\
-                    .takewhile(self.st_name)\
-                    .takewhile(_ST_SUFFIX, **p)\
-                    .consume_with(_ST_NESW, **p)
-            if regex.match(s, unit_R): #the only difference is .chomp_n(2, __chomp_unit__)... #TODO
 
-                    z:Zipper[str, ParseResult] = z.chomp_n(2, __chomp_unit__)
-            
-            z:Zipper[str, ParseResult] = z.takewhile(self.city, **p)\
-                .consume_with(_US_STATE)
-
-            try:
-                z = z.consume_with(_ZIP_CODE)
-            except (EndOfInputError, ParseError):
-                pass
-
-        except EndOfInputError as e:
-            raise EndOfAddressError(_s, "unknown")
-
-        except ParseError as e:
-            raise ParseError(_s, e.reason)
-
+    def __hn_nesw__(self)->List[Fn[[Zipper[str, ParseResult]], Zipper[str, ParseResult]]]:
+        from .__zipper__ import Apply
+        p = Parser.__ex_types__
+        return [
+                    Apply.consume_with(_HOUSE_NUMBER, **p),
+                    Apply.consume_with(_ST_NESW, **p ),
+                    Apply.takewhile(self.st_name, **p ),
+                    Apply.takewhile(_ST_SUFFIX, **p ),
+                    Apply.consume_with(_ST_NESW, **p)
+            ]
+    def __collect_results__(self, _s:str, results: Iter[ParseResult], checked:bool)->RawAddress:
         d : Dict[str, List[str]] = {
                 "house_number" : [],
                 "st_name" : [],
@@ -273,8 +258,9 @@ class Parser:
                 "us_state" : [],
                 "zip_code" : [] }
 
-        for p_r in z.results:
-            d[p_r.label] += [p_r.value]
+        for p_r in results:
+            if p_r.label != "junk":
+                d[p_r.label] += [p_r.value]
 
         #TODO perform S NW AVE bvld sanity checks right here
         if checked:
@@ -290,7 +276,72 @@ class Parser:
             str_d[opt] = str_to_opt(str_d[opt])
         return RawAddress(orig=_s, **str_d)
 
+    def __call__(self, _s: str, checked:bool=True)->RawAddress:
+        from .__zipper__ import Apply
 
+        #print(_s)
+        if self.blank_parse != None:
+            try:
+                return self.blank_parse(_s, checked=checked)
+            except:
+                pass
+        s = self.__tokenize__(_s)
+        p = Parser.__ex_types__
+        unit: Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]] = lambda z: z
+        zip_code: Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]] = lambda z: z
+        if regex.match(s, unit_R):
+            unit = Apply.chomp_n(2, __chomp_unit__, **p)
+        data = s.split()
+        if data and regex.match(data[-1], zip_code_R):
+            zip_code = Apply.consume_with(_ZIP_CODE, **p)
+         #TODO make Zipper.takewhile ignore exceptions after 1 consumed???
+        funcs = [*self.__hn_nesw__(), 
+                 unit,
+                 Apply.takewhile(self.city),
+                 Apply.consume_with(_US_STATE),
+                 zip_code]
+        try:
+
+            
+            f: Fn[[Zipper[str, ParseResult]], Zipper[str, ParseResult]] = Apply.reduce(funcs)
+            z:Zipper[str, ParseResult]=f(Zipper(GenericInput(data=data)))
+
+        except EndOfInputError as e:
+            raise EndOfAddressError(_s, "unknown")
+
+        except ParseError as e:
+            raise ParseError(_s, e.reason)
+
+        return self.__collect_results__(_s, z.results, checked)
+    
+    def parse_row(self, row: Iter[str])->RawAddress:
+        from .__zipper__ import x, Zipper, Apply
+        from .__zipper__ import GenericInput as Input
+        unit: Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]] = lambda z: z
+        zip_code: Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]] = lambda z: z
+        row = [self.__tokenize__(s) for s in row]
+        for cell in row:
+            if regex.match(cell, unit_R):
+                unit = Apply.chomp_n(2, __chomp_unit__)
+                break
+        leftovers = [cell.split() for cell in row]
+        z: Zipper[List[str], ParseResult] = Zipper(leftover=Input(leftovers), results=[])
+        
+        funcs = [*self.__hn_nesw__(), 
+                 unit,
+                 Apply.takewhile(self.city),
+                 Apply.consume_with(_US_STATE),
+                 Apply.consume_with(_ZIP_CODE)]
+        
+        z = x(z, funcs)
+
+        results = list(z.results)
+
+        #print(results)
+        
+        return self.__collect_results__("\t".join(row),
+                 results,
+                 False)
 def smart_batch(p: Parser,
                adds:Iter[str],
                report_error: Fn[[ParseError, str], None] = lambda e,s: None) -> Iter[RawAddress]:
@@ -336,6 +387,7 @@ __difficult_addresses__ = ["000  Plymouth Rd Trlr 113  Ford MI 48000",
                                      "0 W Boston Blvd # 7  Detroit MI 48000"]
 
 def test():
+    
     p = Parser(known_cities= ["city"])
     adds = ["0 Street apt 5 St City MI", 
             "0 Street NE City MI",
@@ -362,9 +414,43 @@ def test():
             raise Exception("Should have failed test " + s)
         except (ParseError, EndOfInputError):
             pass
-    
 
+    #test parse_row############################
+    import random
+    z = 2^10 - 1
+    random.seed(z)
+    p = Parser()
+    seeds = [random.randint(0,z) for _ in range(16)]
+    for seed in seeds:
+        random.seed(seed)
+        STOP_SEP = "dkjf4oit"
+        def make_row(a:Address)->Iter[str]:
+            def _(a:Address)->Iter[str]:
 
+                flip = lambda : random.choice([True, False])
+                for idx, word in enumerate(a[:8]):
+                    if word == None:
+                        word = ""
+                    if flip() or idx == 4:
+                        yield STOP_SEP
+                    yield word
+            return " ".join(_(a)).split(STOP_SEP)
+        from .address import example_addresses
+        #print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+        #print(example_addresses[0][])
+        #raise Exception()
+        row = make_row(example_addresses[0])
+        for a in example_addresses:
+            #print("\n\n###################################\n\n")
+            row = make_row(a)
+            #print("row", row)
+            r = Address(*p.parse_row(row))
+            r.reparse_test(lambda s: a)
+            if not (a == r):
+                for i, (_a, _r) in enumerate(zip(a,r)):
+                    if _a != _r:
+                        print(i, _a, "!=", _r)
+                raise Exception()
 
 
 
