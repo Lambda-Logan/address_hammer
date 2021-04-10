@@ -386,8 +386,48 @@ __difficult_addresses__ = ["000  Plymouth Rd Trlr 113  Ford MI 48000",
                                      "0  Stoepel St #0  Detroit MI 48000",
                                      "0 W Boston Blvd # 7  Detroit MI 48000"]
 
+
+def addresses_to_rows(seed: int, adds: Iter[Address])->List[List[str]]:
+    """
+    This is used for testing Parser.parse_row.
+    It takes a list of addresses and returns a list of rows that should represent each address
+    """
+    import random
+    random.seed(seed)
+    STOP_SEP = "dkjf4oit"
+    def make_row(a:Address)->Iter[str]:
+        def _(a:Address)->Iter[str]:
+            flip = lambda : random.choice([True, False])
+            for idx, word in enumerate(a[:8]):
+                if word == None:
+                    word = ""
+                if flip() or idx == 4:
+                    yield STOP_SEP
+                yield word
+        return " ".join(_(a)).split(STOP_SEP)
+    return [list(make_row(a)) for a in adds]
+
+def test_parse_row():
+    import random
+    z = 2^10 - 1
+    random.seed(z)
+    p = Parser() 
+    seeds = [random.randrange(0-z,z) for _ in range(16)]
+    for seed in seeds:
+        print(seed)
+        from .address import example_addresses as exs
+        rows = addresses_to_rows(seed, exs)
+        for row, a in zip(rows,exs):
+            r = Address(*p.parse_row(row))
+            r.reparse_test(lambda s: a)
+            if not (a == r):
+                for i, (_a, _r) in enumerate(zip(a,r)):
+                    if _a != _r:
+                        print(i, _a, "!=", _r)
+                raise Exception()
+
 def test():
-    
+    test_parse_row()
     p = Parser(known_cities= ["city"])
     adds = ["0 Street apt 5 St City MI", 
             "0 Street NE City MI",
@@ -414,44 +454,6 @@ def test():
             raise Exception("Should have failed test " + s)
         except (ParseError, EndOfInputError):
             pass
-
-    #test parse_row############################
-    import random
-    z = 2^10 - 1
-    random.seed(z)
-    p = Parser()
-    seeds = [random.randint(0,z) for _ in range(16)]
-    for seed in seeds:
-        random.seed(seed)
-        STOP_SEP = "dkjf4oit"
-        def make_row(a:Address)->Iter[str]:
-            def _(a:Address)->Iter[str]:
-
-                flip = lambda : random.choice([True, False])
-                for idx, word in enumerate(a[:8]):
-                    if word == None:
-                        word = ""
-                    if flip() or idx == 4:
-                        yield STOP_SEP
-                    yield word
-            return " ".join(_(a)).split(STOP_SEP)
-        from .address import example_addresses
-        #print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-        #print(example_addresses[0][])
-        #raise Exception()
-        row = make_row(example_addresses[0])
-        for a in example_addresses:
-            #print("\n\n###################################\n\n")
-            row = make_row(a)
-            #print("row", row)
-            r = Address(*p.parse_row(row))
-            r.reparse_test(lambda s: a)
-            if not (a == r):
-                for i, (_a, _r) in enumerate(zip(a,r)):
-                    if _a != _r:
-                        print(i, _a, "!=", _r)
-                raise Exception()
-
 
 
 

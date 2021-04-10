@@ -10,15 +10,18 @@ def all_tests():
     parsing_test()
     fuzzy_string_test()
     hammer_test()
-from .parsing import Parser
-from .address import example_addresses as exs
-#print(len(exs))
-n = 5000
-p = Parser()
-print(n*len(exs))
-for _ in range(n):
-    for a in exs:
-        try:
-            p(a.orig,checked=True)
-        except:
-            pass
+
+def parse_benchmak():
+    from .parsing import Parser
+    from .address import example_addresses as exs
+    #print(len(exs))
+    n = 5000
+    p = Parser()
+    print(n*len(exs))
+    for _ in range(n):
+        for a in exs:
+            try:
+                p(a.orig,checked=True)
+            except:
+                pass
+all_tests()

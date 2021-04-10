@@ -242,8 +242,14 @@ def hash_test():
         exs[a], exs[b] = exs[b], exs[a]
     assert h.batch_checksum == Hammer(exs).batch_checksum
 
-    assert Hammer(exs[:7]).batch_checksum == r"c0c04f4b20d2a1c9d48be55598f0662b"
-    assert Hammer(exs[2:6]).batch_checksum == r"656e3a4954a688062d89708f0eb53436"
+    _0_7 = r"c0c04f4b20d2a1c9d48be55598f0662b"
+    _2_6 = r"656e3a4954a688062d89708f0eb53436"
+    from .parsing import addresses_to_rows, Parser
+    p = Parser()
+    row_exs = [p.parse_row(row) for row in addresses_to_rows(0, exs)]
+    for adds in [exs, row_exs]:
+        assert Hammer(adds[:7]).batch_checksum == _0_7
+        assert Hammer(adds[2:6]).batch_checksum == _2_6
 
     def modify(a: str, b:Opt[str])->Fn[[Address], Address]:
         return lambda address: address.replace(**{a:b})
