@@ -146,6 +146,55 @@ p = Parser(known_cities=["Grandville"])
 p("128 E Grandville Grandville MI")
 ```
 
+# Parsing addresses from a spreadsheet
+Addresses in a spreadsheet are already usually semi-parsed. If your data is coming from a spreadsheet or csv, please use `Parser.parse_row`
+
+```python
+from address_hammer import Parser
+row = ["123 Foo", "Barville AZ"]
+s = "123 Foo Barville AZ"
+p = Parser()
+
+#this will parse correctly, because we have a separation between the street_name and city
+address = p.parse_row(row)
+
+#this will not
+address = p(s)
+```
+
+# Debugging
+
+Use `with_log_info`.
+
+```python
+from address_hammer import Parser, RawAddress, with_log_info
+s = "9393 Pretty Cloud Rd, Sky Town WY"
+p = Parser()
+address: RawAddress = with_log_info(lambda s: p(s), s, print)
+```
+... will print the following
+```python
+ParseResult(label='house_number', value='9393')
+ParseResult(label='st_name', value='PRETTY')
+ParseResult(label='st_name', value='CLOUD')
+ParseResult(label='st_suffix', value='RD')
+ParseResult(label='city', value='SKY')
+ParseResult(label='city', value='TOWN')
+ParseResult(label='us_state', value='WY')
+```
+
+This is useful to find out why an address didn't parse correctly. For example, if we had use the string `"234 S Bar  Fooville MA"`, then it would print the following and then raise a `ParseError`
+
+```python
+ParseResult(label='house_number', value='234')
+ParseResult(label='st_NESW', value='S')
+ParseResult(label='st_name', value='BAR')
+ParseResult(label='st_name', value='FOOVILLE')
+ParseResult(label='st_name', value='MA')
+>>> address_hammer.parsing.ParseError: @ Could not identify city: 234 S Bar  Fooville MA
+```
+
+
 # Performance
 `address_hammer` is designed for simplicity, robustness and type safety. If you need to process millions of addresses, you may need some patience or another library. However, on my machine `Parser` will parse about 2,400 addresses per second and has been tested on 500K+ real-world addresses.
 
