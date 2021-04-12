@@ -121,7 +121,7 @@ p = Parser()
 print(p("999 8th blvd California CA 54321"))
 # >> RawAddress(city='CALIFORNIA', us_state='CA', house_number='999', st_name='8TH', st_suffix='BLVD', st_NESW=None, unit=None, zip_code='54321', orig='999 8th blvd California CA')
 ```
-Directly using `Parser` has the limitation that all address strings must either have something between the street name and the city (such as a unit or a street suffix), OR have the city passed in the `known_cities` parameter of the `Parser`. Using a `Hammer` doesn't have these limitations.
+Directly using `Parser` has the limitation that all address strings must either have something between the street name and the city (such as a unit or a street suffix), OR have the city passed in the `known_cities` parameter of the `Parser`. Using a `Hammer` doesn't have these limitations, as well as `Parser.parse_row`.
 
 ```python
 p = Parser()
@@ -145,6 +145,8 @@ Also, directly using a `Parser` has the limitation that a known city cannot be p
 p = Parser(known_cities=["Grandville"])
 p("128 E Grandville Grandville MI")
 ```
+
+
 
 # Parsing addresses from a spreadsheet
 Addresses in a spreadsheet are already usually semi-parsed. If your data is coming from a spreadsheet or csv, please use `Parser.parse_row`
