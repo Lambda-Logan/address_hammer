@@ -9,7 +9,7 @@ import re
 from .address import Address, RawAddress
 from . import address
 from . import __regex__ as regex
-from .__zipper__ import Zipper, GenericInput, EndOfInputError
+from .__zipper__ import Zipper, GenericInput, EndOfInputError, Apply
 
 
 #TODO correctly handle all usps secondary unit identifiers and 1/2
@@ -188,6 +188,7 @@ class Parser:
         
         "123 Dallas Houston TX"    # # the street is recognized as a city (and unfortunately there is not an identifier bewteen the street and city)
     """
+    __Apply__ = Apply
     __ex_types__ = {"ex_types":tuple([ParseError])}
     blank_parse: Opt[Parser]
     city: Fn[[str], Seq[ParseResult]]
@@ -238,7 +239,7 @@ class Parser:
         return s
 
     def __hn_nesw__(self)->List[Fn[[Zipper[str, ParseResult]], Zipper[str, ParseResult]]]:
-        from .__zipper__ import Apply
+        Apply = Parser.__Apply__
         p = Parser.__ex_types__
         return [
                     Apply.consume_with(_HOUSE_NUMBER, **p),
@@ -277,9 +278,7 @@ class Parser:
         return RawAddress(orig=_s, **str_d)
 
     def __call__(self, _s: str, checked:bool=True)->RawAddress:
-        from .__zipper__ import Apply
-
-        #print(_s)
+        Apply = Parser.__Apply__
         if self.blank_parse != None:
             try:
                 return self.blank_parse(_s, checked=checked)
@@ -414,7 +413,6 @@ def test_parse_row():
     p = Parser() 
     seeds = [random.randrange(0-z,z) for _ in range(16)]
     for seed in seeds:
-        print(seed)
         from .address import example_addresses as exs
         rows = addresses_to_rows(seed, exs)
         for row, a in zip(rows,exs):

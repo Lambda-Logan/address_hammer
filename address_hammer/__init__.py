@@ -1,6 +1,8 @@
 from .address import Address, RawAddress, InvalidAddressError
 from .parsing import Parser, ParseError, EndOfAddressError
 from .hammer import Hammer
+from .__logging__ import with_log_info
+
 """
 p = Parser(known_cities="Houston Dallas".split())
         
@@ -19,7 +21,5 @@ b =  ["123 Straight Houuston TX", #typo
         
         "123 Dallas Houston TX" ]
 """
-#TODO make way to toggle if addresses should be compared
-#shoud_compare_batch_checksums = Address.__should_compare_batch_checksums
 
-(EndOfAddressError, Address, Parser, ParseError, RawAddress, InvalidAddressError, Hammer)
+(EndOfAddressError, with_log_info, Address, Parser, ParseError, RawAddress, InvalidAddressError, Hammer)
