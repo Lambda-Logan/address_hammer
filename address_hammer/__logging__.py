@@ -3,6 +3,12 @@ from .address import Address
 T = TypeVar("T")
 
 def with_log_info(p: Fn[[T], Address], t: T, log : Fn[[Tuple[str,str]], None]):
+    """
+    s = "234 S Bar  Fooville MA"
+    p = Parser()
+    address = with_log_info(p, s, print)
+    print(address)
+    """
     from .__zipper__ import Apply as ZApply
     from .__zipper__ import Zipper
     from .parsing import ParseResult, Parser
@@ -29,4 +35,3 @@ def with_log_info(p: Fn[[T], Address], t: T, log : Fn[[Tuple[str,str]], None]):
     ret = p(t)
     Parser.__Apply__ = ZApply
     return ret
-
