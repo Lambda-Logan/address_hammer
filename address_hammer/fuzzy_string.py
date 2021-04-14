@@ -143,16 +143,4 @@ class FixTypos:
 
 
 
-def test():
-    fix_typos = FixTypos("michigan scalifornia ohio ontario numeric12".upper().split())
 
-    # these are close enough they should be repaired with a level 5 out of 10
-    a = "mmichyigan ohiao kscaliofornita nmeric12".upper().split()
-    for w in a:
-        assert a != fix_typos(w)
-
-    # these should be recognized as distinct with a level 5 out of 10
-    b = "muichzigaan ohsiao kscaliofyornita numeric21".upper().split()
-    for w in b:
-        assert w == fix_typos(w)
-        pass

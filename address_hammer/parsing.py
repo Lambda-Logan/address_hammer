@@ -386,72 +386,11 @@ __difficult_addresses__ = ["000  Plymouth Rd Trlr 113  Ford MI 48000",
                                      "0 W Boston Blvd # 7  Detroit MI 48000"]
 
 
-def addresses_to_rows(seed: int, adds: Iter[Address])->List[List[str]]:
-    """
-    This is used for testing Parser.parse_row.
-    It takes a list of addresses and returns a list of rows that should represent each address
-    """
-    import random
-    random.seed(seed)
-    STOP_SEP = "dkjf4oit"
-    def make_row(a:Address)->Iter[str]:
-        def _(a:Address)->Iter[str]:
-            flip = lambda : random.choice([True, False])
-            for idx, word in enumerate(a[:8]):
-                if word == None:
-                    word = ""
-                if flip() or idx == 4:
-                    yield STOP_SEP
-                yield word
-        return " ".join(_(a)).split(STOP_SEP)
-    return [list(make_row(a)) for a in adds]
 
-def test_parse_row():
-    import random
-    z = 2^10 - 1
-    random.seed(z)
-    p = Parser() 
-    seeds = [random.randrange(0-z,z) for _ in range(16)]
-    for seed in seeds:
-        from .address import example_addresses as exs
-        rows = addresses_to_rows(seed, exs)
-        for row, a in zip(rows,exs):
-            r = Address(*p.parse_row(row))
-            r.reparse_test(lambda s: a)
-            if not (a == r):
-                for i, (_a, _r) in enumerate(zip(a,r)):
-                    if _a != _r:
-                        print(i, _a, "!=", _r)
-                raise Exception()
 
-def test():
-    test_parse_row()
-    p = Parser(known_cities= ["city"])
-    adds = ["0 Street apt 5 St City MI", 
-            "0 Street NE City MI",
-            "0 Street Apt 3 City MI",
-            "0 Street Apt 0 City MI",
-            "1 Street City MI"]
-    (adds)
-    #print([[a.pretty() for a in a_s] for a_s in d.values()])
-    #print([a.pretty() for a in RawAddress.merge_duplicates(map(p, adds))])
-    p = Parser(known_cities = ["Zamalakoo", "Grand Rapids"])
-    for a in __difficult_addresses__:
-        p(a)
 
-    from .address import example_addresses
-    for a in example_addresses:
-        a.reparse_test(p)
-    zipless = Parser()
-    zipless("123 Qwerty St Asdf NY")
-    p = Parser()
-    should_fail = [(Parser(known_cities=["Qwerty", "Yuiop", "Asdf", "Hjkl"]), "123 Qwerty Hjkl NY 00000")]
-    for p, s in should_fail:
-        try:
-            p(s)
-            raise Exception("Should have failed test " + s)
-        except (ParseError, EndOfInputError):
-            pass
+
+
 
 
 

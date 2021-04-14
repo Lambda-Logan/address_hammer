@@ -14,7 +14,7 @@ def with_log_info(p: Fn[[T], Address], t: T, log : Fn[[Tuple[str,str]], None]):
     from .parsing import ParseResult, Parser
     PZ = Zipper[str,ParseResult]
     def logged(fn: Fn[[Any], Fn[[PZ], PZ]])->Fn[[PZ], PZ]:
-        def _(*args, **kwargs)->Fn[[PZ], PZ]:
+        def _(*args: Any, **kwargs: Any)->Fn[[PZ], PZ]:
             z_z  = fn(*args, **kwargs)
             def __(z: PZ)->PZ:
                 z = z_z(z)
