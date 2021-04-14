@@ -8,17 +8,7 @@ from .__zipper__ import EndOfInputError, Zipper, GenericInput
 from .fuzzy_string import FixTypos
 from .hammer import Hammer
 
-def all_tests():
-    from .address import test as address_test
-    from .__zipper__ import test as zipper_test
-    from .parsing import test as parsing_test
-    from .fuzzy_string import test as fuzzy_string_test
-    from .hammer import test as hammer_test
-    address_test()
-    zipper_test()
-    parsing_test()
-    fuzzy_string_test()
-    hammer_test()
+
 
 def parse_benchmak():
     from .parsing import Parser
@@ -29,10 +19,8 @@ def parse_benchmak():
     print(n*len(exs))
     for _ in range(n):
         for a in exs:
-            try:
-                p(a.orig,checked=True)
-            except:
-                pass
+            p(a.orig,checked=True)
+
 
 
 class TestAddress(unittest.TestCase):
