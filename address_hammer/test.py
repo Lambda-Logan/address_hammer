@@ -316,7 +316,7 @@ class TestParser(unittest.TestCase):
                 p(s)
  
 class TestHammer(unittest.TestCase):
-    def test_hash(self):
+    def test_checksum(self):
         exs = example_addresses
         from random import shuffle
         exs = list(map(Address.Set.ignore_checksum, exs))
@@ -367,58 +367,6 @@ class TestHammer(unittest.TestCase):
 
         shuffle(xs)
         h.batch_checksum == Hammer(xs).batch_checksum
-
-    def ttest_checksum(self):
-        exs = example_addresses
-        from random import shuffle
-        exs = list(map(Address.Set.ignore_checksum, exs))
-        h = Hammer(exs)
-        self.assertEqual( h.batch_checksum, Hammer(h.__addresses__).batch_checksum)
-        switch = [(0,-1), (2,3), (1,5)]
-        for a, b in switch:
-            exs[a], exs[b] = exs[b], exs[a]
-            self.assertEqual( h.batch_checksum, Hammer(exs).batch_checksum)
-            exs[a], exs[b] = exs[b], exs[a]
-        self.assertEqual( h.batch_checksum, Hammer(exs).batch_checksum)
-
-        _0_7 = r"c0c04f4b20d2a1c9d48be55598f0662b"
-        _2_6 = r"656e3a4954a688062d89708f0eb53436"
-        p = Parser()
-        row_exs = [p.parse_row(row) for row in TestParser.addresses_to_rows(0, exs)]
-        for adds in [exs, row_exs]:
-            self.assertEqual(Hammer(adds[:7]).batch_checksum, _0_7)
-            self.assertEqual(Hammer(adds[2:6]).batch_checksum,_2_6)
-
-        def modify(a: str, b:Opt[str])->Fn[[Address], Address]:
-            return lambda address: address.replace(**{a:b})
-
-        funcs: List[Fn[[Address], Address]] = [
-            modify("st_name", ""),
-            modify("house_number", "z"),
-            modify("unit", "Lot 4594653657555949"),
-            modify("us_state", "ZZ"),
-            modify("st_suffix", "ZZ")
-        ]
-        
-        idxs = [0,2,4,6]
-        for idx in idxs:
-            a = exs[idx]
-            for f in funcs:
-                exs[idx] = f(a)
-                self.assertNotEqual( h.batch_checksum, Hammer(exs).batch_checksum )
-            exs[idx] = a
-        self.assertEqual( h.batch_checksum , Hammer(exs).batch_checksum )
-
-
-        xs = exs + exs
-        for soft in SOFT_COMPONENTS:
-            f = modify(soft, None)
-            for idx in idxs:
-                #print(f(exs[idx]))
-                xs.append(f(exs[idx]))
-
-        shuffle(xs)
-        self.assertEqual(h.batch_checksum, Hammer(xs).batch_checksum)
 
     def test(self):
         ambigs_1 = [
