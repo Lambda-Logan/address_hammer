@@ -38,8 +38,9 @@ class GenericInput(Generic[T]):
         if new_state > len(self.data):
             raise EndOfInputError()
 
-        return GenericInput(state=new_state,
-                            data = self.data)
+        g: GenericInput[T] = GenericInput(state=new_state,
+                                            data = self.data)
+        return g
 
     def rest_as_str(self)->str:
         idx = len(self.data)-self.state-1
@@ -120,11 +121,12 @@ class Zipper(Generic[I,O]):
         def r()->Iter[O]:
             yield from self.results
             yield from other.results
-        return Zipper(leftover=other.leftover, results=r())
+        z: Zipper[I,O] = Zipper(leftover=other.leftover, results=r())
+        return z
 
     def realize(self)->Zipper[I,O]:
-        return Zipper(leftover=self.leftover, results=list(self.results))
-    
+        z: Zipper[I,O] = Zipper(leftover=self.leftover, results=list(self.results))
+        return z
 
     def chomp_n(self, 
                   n: int,
@@ -204,7 +206,7 @@ class Zipper(Generic[I,O]):
             except tuple(ex_types):
                 leftover: List [I] = []
         else:
-            leftover = self.leftover
+            leftover = [a for a in self.leftover]
 
         for i in leftover:
             #print(GenericInput(self.leftover.data, state=self.leftover.state+1))
@@ -242,7 +244,8 @@ class Zipper(Generic[I,O]):
 def x(_z: Zipper[Seq[I],O],
     _funcs: Iter[Fn[[Zipper[I, O]], Zipper[I, O]]])->Zipper[I,O]:
     leftover: GenericInput[Seq[I]] = _z.leftover
-    z: Zipper[I,O] = Zipper(leftover=GenericInput([]), results=_z.results)
+    empty: GenericInput[I] = GenericInput([])
+    z: Zipper[I,O] = Zipper(leftover=empty, results=_z.results)
     funcs: Iter[Fn[[Zipper[I, O]], Zipper[I, O]]] = iter(_funcs)
     for seq in leftover:
         l = GenericInput(seq)

@@ -2,7 +2,7 @@ from __future__ import annotations
 from .__types__ import *
 from typing import Pattern, Match
 import re
-from .address import Address, RawAddress
+from .address import RawAddress
 from . import address
 from . import __regex__ as regex
 from .__zipper__ import Zipper, GenericInput, EndOfInputError, Apply
@@ -299,7 +299,8 @@ class Parser:
 
             
             f: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = Apply.reduce(funcs)
-            z:Zipper[str, ParseStep]=f(Zipper(GenericInput(data=data)))
+            l:GenericInput[str] = GenericInput(data=data)
+            z:Zipper[str, ParseStep]=f(Zipper(l))
 
         except EndOfInputError as e:
             raise EndOfAddressError(_s, "unknown")
@@ -313,7 +314,7 @@ class Parser:
         from .__zipper__ import x, Zipper, Apply
         from .__zipper__ import GenericInput as Input
         unit: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
-        zip_code: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
+        #zip_code: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
         row = [self.__tokenize__(s) for s in row]
         for cell in row:
             if regex.match(cell, unit_R):

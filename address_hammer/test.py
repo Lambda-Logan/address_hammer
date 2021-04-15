@@ -1,7 +1,6 @@
 
 from __future__ import annotations
 import unittest
-from unittest import runner
 from .__types__ import *
 from .address import Address, SOFT_COMPONENTS, HARD_COMPONENTS, example_addresses, merge_duplicates, HashableFactory
 from .parsing import Parser, __difficult_addresses__, ParseError
