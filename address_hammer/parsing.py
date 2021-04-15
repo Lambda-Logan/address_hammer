@@ -1,11 +1,7 @@
 from __future__ import annotations
-
 from .__types__ import *
-
 from typing import Pattern, Match
-
 import re
-
 from .address import Address, RawAddress
 from . import address
 from . import __regex__ as regex
@@ -39,7 +35,7 @@ class ParserConfigError(Exception):
         self.msg = msg
 
 
-class ParseResult(NamedTuple):
+class ParseStep(NamedTuple):
     label: str
     value: str
 
@@ -57,7 +53,7 @@ def __make_stops_on__(stop_patterns: Iter[Pattern[str]])-> Fn[[str], bool]:
 
 
 
-ArrowParse = Fn[[str], Seq[ParseResult]]
+ArrowParse = Fn[[str], Seq[ParseStep]]
 
 class AddressComponent(NamedTuple):
     compiled_pattern: Pattern[str]
@@ -67,7 +63,7 @@ class AddressComponent(NamedTuple):
     stops_on: Fn[[str], bool] = lambda s: False
 
     def arrow_parse(self)->ArrowParse:
-        def ap(s:str)-> Seq[ParseResult]:
+        def ap(s:str)-> Seq[ParseStep]:
             #print(s)
             if self.stops_on(s):
                 #print("stopped")
@@ -79,7 +75,7 @@ class AddressComponent(NamedTuple):
                 if self.optional:
                     return []
                 raise ParseError(s, self.label)
-            p_r = ParseResult(value=m,label=self.label)
+            p_r = ParseStep(value=m,label=self.label)
             #print(p_r)
             return [p_r]
         return ap
@@ -106,7 +102,7 @@ _HOUSE_NUMBER = AddressComponent(
                  label="house_number", #123 1/3 Pine St
                  compiled_pattern=re.compile(r"[\d/]+")).arrow_parse()
 
-def __make_st_name__(known_cities:List[Pattern[str]]=[])->Fn[[str], Seq[ParseResult]]:
+def __make_st_name__(known_cities:List[Pattern[str]]=[])->Fn[[str], Seq[ParseStep]]:
     return AddressComponent(
             label="st_name",
             compiled_pattern=re.compile(r"\w+"),
@@ -114,7 +110,7 @@ def __make_st_name__(known_cities:List[Pattern[str]]=[])->Fn[[str], Seq[ParseRes
 
 #_ST_NAME = __make_st_name__()
 
-def __chomp_unit__(words: Seq[str])->Seq[ParseResult]:
+def __chomp_unit__(words: Seq[str])->Seq[ParseStep]:
     assert len(words)==2
     if words[0] == "#":
         unit = "APT"
@@ -125,7 +121,7 @@ def __chomp_unit__(words: Seq[str])->Seq[ParseResult]:
     if (unit == None) or (identifier == None):
         #print("unit failed")
         return []
-    result = ParseResult(value="{0} {1}".format(unit, identifier),
+    result = ParseStep(value="{0} {1}".format(unit, identifier),
                         label = "unit")
     return [result]
 
@@ -191,8 +187,8 @@ class Parser:
     __Apply__ = Apply
     __ex_types__ = {"ex_types":tuple([ParseError])}
     blank_parse: Opt[Parser]
-    city: Fn[[str], Seq[ParseResult]]
-    st_name: Fn[[str], Seq[ParseResult]]
+    city: Fn[[str], Seq[ParseStep]]
+    st_name: Fn[[str], Seq[ParseStep]]
     required : Set[str] = set(address.HARD_COMPONENTS)
     optional: Set[str] = set(address.SOFT_COMPONENTS)
     known_cities : List[str] = []
@@ -212,10 +208,10 @@ class Parser:
                         label="city",
                         compiled_pattern=re.compile(regex.or_(normalized_cities_B + [r"\w+"])),
                         stops_on=__make_stops_on__([us_state_R, re.compile(r"\d+")])).arrow_parse()
-        def city_B(s:str)->Seq[ParseResult]:
+        def city_B(s:str)->Seq[ParseStep]:
             #print("city??", s)
             #print("\t", city_A(s))
-            return [ParseResult(value=pr.value.replace("_", " "), label=pr.label) for pr in city_A(s)]
+            return [ParseStep(value=pr.value.replace("_", " "), label=pr.label) for pr in city_A(s)]
         self.city = city_B
         if self.known_cities_R:
             self.st_name = __make_st_name__([self.known_cities_R])
@@ -238,7 +234,7 @@ class Parser:
         #print(s)
         return s
 
-    def __hn_nesw__(self)->List[Fn[[Zipper[str, ParseResult]], Zipper[str, ParseResult]]]:
+    def __hn_nesw__(self)->List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]]:
         Apply = Parser.__Apply__
         p = Parser.__ex_types__
         return [
@@ -248,7 +244,7 @@ class Parser:
                     Apply.takewhile(_ST_SUFFIX, **p ),
                     Apply.consume_with(_ST_NESW, **p)
             ]
-    def __collect_results__(self, _s:str, results: Iter[ParseResult], checked:bool)->RawAddress:
+    def __collect_results__(self, _s:str, results: Iter[ParseStep], checked:bool)->RawAddress:
         d : Dict[str, List[str]] = {
                 "house_number" : [],
                 "st_name" : [],
@@ -286,8 +282,8 @@ class Parser:
                 pass
         s = self.__tokenize__(_s)
         p = Parser.__ex_types__
-        unit: Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]] = lambda z: z
-        zip_code: Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]] = lambda z: z
+        unit: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
+        zip_code: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
         if regex.match(s, unit_R):
             unit = Apply.chomp_n(2, __chomp_unit__, **p)
         data = s.split()
@@ -302,8 +298,8 @@ class Parser:
         try:
 
             
-            f: Fn[[Zipper[str, ParseResult]], Zipper[str, ParseResult]] = Apply.reduce(funcs)
-            z:Zipper[str, ParseResult]=f(Zipper(GenericInput(data=data)))
+            f: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = Apply.reduce(funcs)
+            z:Zipper[str, ParseStep]=f(Zipper(GenericInput(data=data)))
 
         except EndOfInputError as e:
             raise EndOfAddressError(_s, "unknown")
@@ -316,15 +312,15 @@ class Parser:
     def parse_row(self, row: Iter[str])->RawAddress:
         from .__zipper__ import x, Zipper, Apply
         from .__zipper__ import GenericInput as Input
-        unit: Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]] = lambda z: z
-        zip_code: Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]] = lambda z: z
+        unit: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
+        zip_code: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
         row = [self.__tokenize__(s) for s in row]
         for cell in row:
             if regex.match(cell, unit_R):
                 unit = Apply.chomp_n(2, __chomp_unit__)
                 break
         leftovers = [cell.split() for cell in row]
-        z: Zipper[List[str], ParseResult] = Zipper(leftover=Input(leftovers), results=[])
+        z: Zipper[List[str], ParseStep] = Zipper(leftover=Input(leftovers), results=[])
         
         funcs = [*self.__hn_nesw__(), 
                  unit,
