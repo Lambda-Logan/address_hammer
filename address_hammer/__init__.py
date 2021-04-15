@@ -1,7 +1,7 @@
 from .address import Address, RawAddress, InvalidAddressError
 from .parsing import Parser, ParseError, EndOfAddressError
 from .hammer import Hammer
-from .__logging__ import with_log_info
+from .__logging__ import log_parse_with
 
 """
 p = Parser(known_cities="Houston Dallas".split())
@@ -22,4 +22,4 @@ b =  ["123 Straight Houuston TX", #typo
         "123 Dallas Houston TX" ]
 """
 
-__all__ = ["EndOfAddressError", "Address", "Parser", "ParseError", "RawAddress", "InvalidAddressError", "Hammer"]
+__all__ = ["EndOfAddressError", "Address", "Parser", "ParseError", "RawAddress", "InvalidAddressError", "Hammer", "log_parse_with"]

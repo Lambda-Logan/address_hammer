@@ -1,37 +1,40 @@
+from __future__ import annotations
+from address_hammer.__zipper__ import GenericInput
+from .__zipper__ import Apply as ZApply
+from .__zipper__ import Zipper
+from .parsing import ParseResult, Parser
 from .__types__ import *
-from .address import Address
-T = TypeVar("T")
+from contextlib import AbstractContextManager
 
-def with_log_info(p: Fn[[T], Address], t: T, log : Fn[[Tuple[str,str]], None]):
-    """
-    s = "234 S Bar  Fooville MA"
-    p = Parser()
-    address = with_log_info(p, s, print)
-    print(address)
-    """
-    from .__zipper__ import Apply as ZApply
-    from .__zipper__ import Zipper
-    from .parsing import ParseResult, Parser
-    PZ = Zipper[str,ParseResult]
-    def logged(fn: Fn[[Any], Fn[[PZ], PZ]])->Fn[[PZ], PZ]:
-        def _(*args: Any, **kwargs: Any)->Fn[[PZ], PZ]:
-            z_z  = fn(*args, **kwargs)
-            def __(z: PZ)->PZ:
-                z = z_z(z)
-                results = list(z.results)
-                for r in results:
-                    log(r)
-                return Zipper(leftover=z.leftover, results=iter(results))
-            return __
-        return _
+class log_parse_with(AbstractContextManager):
+    def __init__(self, log : Fn[[Tuple[str,str]], None]):
+        def logged(fn: Fn[[Any], Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]]])->Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]]:
+            def _(*args: Any, **kwargs: Any)->Fn[[Zipper[str,ParseResult]], Zipper[str,ParseResult]]:
+                z_z  = fn(*args, **kwargs)
+                def __(z: Zipper[str,ParseResult])->Zipper[str,ParseResult]:
+                    z = z_z(z)
+                    results = list(z.results)
+                    for r in results:
+                        log(r)
+                    leftover: GenericInput[str] = z.leftover
+                    rz: Zipper[str, ParseResult] = Zipper(leftover=leftover, results=iter(results))
+                    return rz
+                return __
+            return _
 
-    class LoggedApply:
-        takewhile = logged(ZApply.takewhile)
-        chomp_n = logged(ZApply.chomp_n)
-        consume_with = logged(ZApply.consume_with)
-        reduce = ZApply.reduce
+        class LoggedApply(ZApply):
+            takewhile = logged(ZApply.takewhile)
+            chomp_n = logged(ZApply.chomp_n)
+            consume_with = logged(ZApply.consume_with)
+            reduce = ZApply.reduce
 
-    Parser.__Apply__ = LoggedApply
-    ret = p(t)
-    Parser.__Apply__ = ZApply
-    return ret
+        self.LoggedApply = LoggedApply
+        self.ZApply = ZApply
+
+    def __enter__(self)->log_parse_with:
+        Parser.__Apply__ = self.LoggedApply
+        return self
+    
+    def __exit__(self, *_):
+        Parser.__Apply__ = self.ZApply
+        return False

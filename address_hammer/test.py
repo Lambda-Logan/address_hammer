@@ -1,13 +1,14 @@
 
 from __future__ import annotations
 import unittest
+from unittest import runner
 from .__types__ import *
 from .address import Address, SOFT_COMPONENTS, HARD_COMPONENTS, example_addresses, merge_duplicates, HashableFactory
 from .parsing import Parser, __difficult_addresses__, ParseError
 from .__zipper__ import EndOfInputError, Zipper, GenericInput
 from .fuzzy_string import FixTypos
 from .hammer import Hammer
-
+from .__logging__ import log_parse_with
 
 
 def parse_benchmak():
@@ -251,6 +252,8 @@ class TestFuzzyString(unittest.TestCase):
         for w in b:
             self.assertEqual(w, fix_typos(w))
 
+
+
 class TestParser(unittest.TestCase):
     @staticmethod
     def addresses_to_rows(seed: int, adds: Iter[Address])->List[List[str]]:
@@ -315,6 +318,23 @@ class TestParser(unittest.TestCase):
             with self.assertRaises((ParseError, EndOfInputError)):
                 p(s)
  
+class TestLogging(unittest.TestCase):
+    def test_logging(self):
+        with log_parse_with(lambda pair: None):
+            tp = TestParser()
+            tp.test()
+            tp.test_parse_row()
+
+        def throw(_:Any)->None:
+            raise Exception("log_parse_with.__exit__ failed")
+        
+        with log_parse_with(throw):
+            pass
+
+        p = Parser()
+        p("000 Fail Rd Failureville NY")
+
+
 class TestHammer(unittest.TestCase):
     def test_checksum(self):
         exs = example_addresses
