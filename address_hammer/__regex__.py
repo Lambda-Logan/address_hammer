@@ -1,7 +1,7 @@
 import re
 import string
 
-from .__types__ import *
+from .__types__ import Iter, Dict, Union, Opt, Seq
 from typing import Pattern
 
 

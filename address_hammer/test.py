@@ -1,6 +1,6 @@
 from __future__ import annotations
 import unittest
-from .__types__ import *
+from .__types__ import Seq, Dict, Opt, join, List, id_, Iter, Any, Fn, NamedTuple, Tuple
 from .address import (
     Address,
     SOFT_COMPONENTS,
@@ -27,6 +27,15 @@ def parse_benchmak():
     for _ in range(n):
         for a in exs:
             p(a.orig, checked=True)
+
+
+def hammer_bench():
+    from .address import example_addresses
+
+    exs = list(join(map(lambda _: example_addresses, range(1000))))
+
+    for _ in range(20):
+        Hammer(exs)
 
 
 class TestAddress(unittest.TestCase):
@@ -166,9 +175,6 @@ class TestZipper(unittest.TestCase):
             else:
                 return [n + 0, n + 1, n + 2]
 
-        def _id(x: T) -> T:
-            return x
-
         import itertools
 
         odds = [1, 3, 7]
@@ -181,13 +187,13 @@ class TestZipper(unittest.TestCase):
 
         with self.assertRaises(EndOfInputError):
             i: GenericInput[int] = input([])
-            Zipper(i).chomp_n(2, _id)
+            Zipper(i).chomp_n(2, id_)
 
         with self.assertRaises(EndOfInputError):
-            Zipper(input([0])).chomp_n(2, _id)
+            Zipper(input([0])).chomp_n(2, id_)
 
-        Zipper(input([2, 3, 4])).chomp_n(2, _id).test("chomp 0", [2, 3])
-        Zipper(input([5, 6])).chomp_n(2, _id).test("chomp 1", [5, 6])
+        Zipper(input([2, 3, 4])).chomp_n(2, id_).test("chomp 0", [2, 3])
+        Zipper(input([5, 6])).chomp_n(2, id_).test("chomp 1", [5, 6])
         # should_throw("chomp 2", EndOfInputError, lambda : )
         # should_throw("chomp 3", EndOfInputError, lambda : )
 
@@ -206,7 +212,7 @@ class TestZipper(unittest.TestCase):
         ).test("takewhile 5", f_odds + fan_even(2))
 
         with self.assertRaises(EndOfInputError):
-            Zipper(input(odds + [2])).takewhile(fan_odd).chomp_n(2, _id)
+            Zipper(input(odds + [2])).takewhile(fan_odd).chomp_n(2, id_)
 
         Zipper(input(odds + [2])).takewhile(fan_odd).test_leftover("leftover 0", [2])
 

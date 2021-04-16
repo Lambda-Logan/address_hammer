@@ -1,10 +1,9 @@
 from __future__ import annotations
-from address_hammer.__zipper__ import GenericInput
-from .__zipper__ import Apply as ZApply
-from .__zipper__ import Zipper
-from .parsing import ParseStep, Parser
-from .__types__ import *
 from contextlib import AbstractContextManager
+from .__zipper__ import Apply as ZApply
+from .__zipper__ import Zipper, GenericInput
+from .parsing import ParseStep, Parser
+from .__types__ import Fn, Tuple, Any
 
 
 class log_parse_with(AbstractContextManager):

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .__types__ import *
+from .__types__ import Dict, Iter, Tuple, Fn, T, Set, Any
 
 Bow = Dict[str, float]
 

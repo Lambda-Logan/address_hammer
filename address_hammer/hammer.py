@@ -1,14 +1,10 @@
 from __future__ import annotations
-from .__types__ import *
+from .__types__ import Union, T, Fn, Seq, List, Tuple, Dict, Set, join, Iter, id_
 from .address import Address, HashableFactory, CHECKSUM_IGNORE
 from .fuzzy_string import FixTypos
 from .parsing import Parser, ParseError, smart_batch
 
 Bag = Dict[str, int]
-
-
-def _id(t: T) -> T:
-    return t
 
 
 def bag_from(ss: Iter[str]) -> Bag:
@@ -36,6 +32,9 @@ def check_checksum(a: str, b: str):
         return None
     if a != b:
         raise ChecksumMismatch(a, b)
+
+
+remove_unit = Address.Set(unit=lambda x: None)
 
 
 class Hammer:
@@ -138,18 +137,17 @@ class Hammer:
         city_bag = bag_from(map(Address.Get.city, addresses))
 
         if city_repair_level == 0:
-            self.__repair_city__: Fn[[str], str] = _id
+            self.__repair_city__: Fn[[str], str] = id_
         else:
 
             cities = [
                 *known_cities,
                 *filter(lambda c: cuttoff < city_bag.get(c, 0), city_bag.keys()),
             ]
-
             self.__repair_city__ = FixTypos(cities, cuttoff=city_repair_level)
 
         if street_repair_level == 0:
-            self.__repair_st__: Fn[[str], str] = _id
+            self.__repair_st__: Fn[[str], str] = id_
         else:
             st_name_bag = bag_from(map(Address.Get.st_name, addresses))
             streets = [
@@ -183,21 +181,17 @@ class Hammer:
 
             checksum = m.hexdigest()
         self.batch_checksum = checksum
+        self.fix_typos = Address.Set(
+            city=self.__repair_city__,
+            st_name=self.__repair_st__,
+            batch_checksum=lambda _: checksum,
+        )
         addresses = [self.fix_typos(a) for a in addresses]
         self.p = Parser(known_cities=list(city_bag.keys()))
         self.__hashable_factory__ = HashableFactory.from_all_addresses(addresses)
         self.ambigous_address_groups = self.__hashable_factory__.fix_by_hand
         self.__addresses__ = set(join(map(self.zero_or_more, addresses)))
         self.parse_errors = parse_errors
-
-    def fix_typos(self, a: Address, _bh_: str = "") -> Address:
-        return a.replace(
-            **{
-                "city": self.__repair_city__(a.city),
-                "st_name": self.__repair_st__(a.st_name),
-                "batch_checksum": _bh_,
-            }
-        )
 
         # self.__hashable_factory__.fix_by_hand
 
@@ -238,7 +232,7 @@ class Hammer:
                 + "\n"
             )
             warnings.warn(msg)
-            return adds[0].replace(unit=None)
+            return remove_unit(adds[0])
 
     def __len__(self) -> int:
         return len(self.__addresses__)

@@ -1,6 +1,21 @@
 from __future__ import annotations
 
-from .__types__ import *
+from .__types__ import (
+    join,
+    List,
+    Set,
+    Iter,
+    TypeVar,
+    T,
+    Opt,
+    Dict,
+    Fn,
+    Seq,
+    Tuple,
+    NamedTuple,
+    Any,
+    id_,
+)
 
 SOFT_COMPONENTS = ["st_suffix", "st_NESW", "unit", "zip_code"]
 HARD_COMPONENTS = ["house_number", "st_name", "city", "us_state"]
@@ -163,6 +178,22 @@ class Address(NamedTuple):
             }
         )
 
+    def __as_address__(self) -> Address:
+        if isinstance(self, RawAddress):
+            return Address(
+                house_number=self.house_number,
+                st_name=self.st_name,
+                st_suffix=self.st_suffix,
+                st_NESW=self.st_NESW,
+                unit=self.unit,
+                city=self.city,
+                us_state=self.us_state,
+                zip_code=self.zip_code,
+                orig=self.orig,
+                batch_checksum=self.batch_checksum,
+            )
+        return self
+
     def pretty(self) -> str:
         from .__regex__ import normalize_whitespace
 
@@ -226,23 +257,35 @@ class Address(NamedTuple):
         dict: Fn[[Address], Dict[str, Any]] = lambda a: a.to_dict()
         batch_checksum: Fn[[Address], str] = lambda a: a.batch_checksum
 
-    class Set:
-        __make__: Fn[[str], Fn[[Opt[str]], Fn[[Address], Address]]] = lambda label: (
-            lambda s: (lambda a: a.replace(**{label: s}))
-        )
-        house_number: Fn[[str], Fn[[Address], Address]] = __make__("house_number")
-        st_name: Fn[[str], Fn[[Address], Address]] = __make__("st_name")
-        st_suffix: Fn[[Opt[str]], Fn[[Address], Address]] = __make__("st_suffix")
-        st_NESW: Fn[[Opt[str]], Fn[[Address], Address]] = __make__("st_NESW")
-        unit: Fn[[Opt[str]], Fn[[Address], Address]] = __make__("unit")
-        city: Fn[[str], Fn[[Address], Address]] = __make__("city")
-        us_state: Fn[[str], Fn[[Address], Address]] = __make__("us_state")
-        zip_code: Fn[[Opt[str]], Fn[[Address], Address]] = __make__("zip_code")
-        orig: Fn[[str], Fn[[Address], Address]] = __make__("orig")
-        batch_checksum: Fn[[str], Fn[[Address], Address]] = __make__("batch_checksum")
-        ignore_checksum: Fn[[Address], Address] = __make__("batch_checksum")(
-            CHECKSUM_IGNORE
-        )
+    class Set(NamedTuple):
+        house_number: Fn[[str], str] = id_
+        st_name: Fn[[str], str] = id_
+        st_suffix: Fn[[Opt[str]], Opt[str]] = id_
+        st_NESW: Fn[[Opt[str]], Opt[str]] = id_
+        unit: Fn[[Opt[str]], Opt[str]] = id_
+        city: Fn[[str], str] = id_
+        us_state: Fn[[str], str] = id_
+        zip_code: Fn[[Opt[str]], Opt[str]] = id_
+        orig: Fn[[str], str] = id_
+        batch_checksum: Fn[[str], str] = id_
+
+        def __call__(self, a: Address) -> Address:
+            return a._replace(
+                house_number=self.house_number(a.house_number),
+                st_name=self.st_name(a.st_name),
+                st_suffix=self.st_suffix(a.st_suffix),
+                st_NESW=self.st_NESW(a.st_NESW),
+                unit=self.unit(a.unit),
+                city=self.city(a.city),
+                us_state=self.us_state(a.us_state),
+                zip_code=self.zip_code(a.zip_code),
+                orig=self.orig(a.orig),
+                batch_checksum=self.batch_checksum(a.batch_checksum),
+            )
+
+        @staticmethod
+        def ignore_checksum(a: Address) -> Address:
+            return a._replace(batch_checksum=CHECKSUM_IGNORE)
 
 
 class RawAddress(Address):
@@ -328,15 +371,18 @@ class HashableFactory(NamedTuple):
 
             # this is where filling units shoud be toggled
             ret: List[Address] = []
-            hashable: Fn[[Address], Address] = lambda a: Address(*a)
+
             if a.unit:
-                return [hashable(a.combine_soft_dict(a_dict))]
+                return [a.combine_soft_dict(a_dict).__as_address__()]
             else:
-                units: Dict[str, List[Address]] = get(unit_store, hards, set([]))
+                empty_d: Dict[str, List[Address]] = {}
+                units: Dict[str, List[Address]] = get(unit_store, hards, empty_d)
                 if not units:
-                    return [hashable(a.combine_soft_dict(a_dict))]
+                    return [a.combine_soft_dict(a_dict).__as_address__()]
                 for adds in units.values():
-                    ret.extend([hashable(a.combine_soft(b)) for b in adds if a == b])
+                    ret.extend(
+                        [a.combine_soft(b).__as_address__() for b in adds if a == b]
+                    )
                 return ret
 
         # remove ambigous apt addresses

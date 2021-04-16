@@ -13,4 +13,8 @@ def join(tss: Iter[Iter[T]]) -> Iter[T]:
         yield from ts
 
 
+def id_(t: T) -> T:
+    return t
+
+
 (Opt[None], Fn, Seq, List, Tuple, Dict, NamedTuple, Set, TypeVar, Union, Any, Type)

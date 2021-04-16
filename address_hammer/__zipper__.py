@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .__types__ import *
+from .__types__ import Fn, Iter, Seq, T, TypeVar, Any, Type, List, Tuple
 from typing import Generic
 
 

@@ -22,6 +22,7 @@ b =  ["123 Straight Houuston TX", #typo
         "123 Dallas Houston TX" ]
 """
 
+
 __all__ = [
     "EndOfAddressError",
     "Address",
