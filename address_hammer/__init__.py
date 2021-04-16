@@ -22,4 +22,14 @@ b =  ["123 Straight Houuston TX", #typo
         "123 Dallas Houston TX" ]
 """
 
-__all__ = ["EndOfAddressError", "Address", "Parser", "ParseError", "RawAddress", "InvalidAddressError", "Hammer", "log_parse_with", "ParseStep"]
+__all__ = [
+    "EndOfAddressError",
+    "Address",
+    "Parser",
+    "ParseError",
+    "RawAddress",
+    "InvalidAddressError",
+    "Hammer",
+    "log_parse_with",
+    "ParseStep",
+]

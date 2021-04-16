@@ -1,6 +1,3 @@
-
-
-
 from typing import List, Tuple, Dict, NamedTuple, Set, TypeVar, Union, Any, Type
 
 from typing import Optional as Opt
@@ -10,7 +7,8 @@ from typing import Iterable as Iter
 
 T = TypeVar("T")
 
-def join(tss: Iter[Iter[T]])->Iter[T]:
+
+def join(tss: Iter[Iter[T]]) -> Iter[T]:
     for ts in tss:
         yield from ts
 
