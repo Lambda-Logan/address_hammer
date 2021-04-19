@@ -1,11 +1,13 @@
 from __future__ import annotations
 import unittest
+from random import shuffle
+import random
+from json import loads, dumps
+import itertools
 from .__types__ import Seq, Dict, Opt, join, List, id_, Iter, Any, Fn, NamedTuple, Tuple
 from .address import (
     Address,
-    SOFT_COMPONENTS,
-    HARD_COMPONENTS,
-    example_addresses,
+    EXAMPLE_ADDRESSES,
     merge_duplicates,
     HashableFactory,
 )
@@ -17,8 +19,8 @@ from .__logging__ import log_parse_with
 
 
 def parse_benchmak():
-    from .parsing import Parser
-    from .address import example_addresses as exs
+
+    exs = EXAMPLE_ADDRESSES
 
     # print(len(exs))
     n = 5000
@@ -30,12 +32,26 @@ def parse_benchmak():
 
 
 def hammer_bench():
-    from .address import example_addresses
 
-    exs = list(join(map(lambda _: example_addresses, range(1000))))
+    exs = list(join(map(lambda _: EXAMPLE_ADDRESSES, range(1000))))
 
     for _ in range(20):
         Hammer(exs)
+
+
+SOFT_MODS: List[Fn[[Opt[str]], Fn[[Address], Address]]] = [
+    lambda s: lambda a: a.with_st_NESW(s),
+    lambda s: lambda a: a.with_st_suffix(s),
+    lambda s: lambda a: a.with_unit(s),
+    lambda s: lambda a: a.with_zip_code(s),
+]
+
+HARD_MODS: List[Fn[[Any], Fn[[Address], Address]]] = [
+    lambda s: lambda a: a.with_house_number(s),
+    lambda s: lambda a: a.with_st_name(s),
+    lambda s: lambda a: a.with_city(s),
+    lambda s: lambda a: a.with_us_state(s),
+]
 
 
 class TestAddress(unittest.TestCase):
@@ -80,32 +96,38 @@ class TestAddress(unittest.TestCase):
                         )
 
         def with_x(self, x: Address) -> TestAddress.UniqTest:
-            return self._replace(xs=(x, *self.xs))
+            # return self._replace(xs=(x, *self.xs))
+            return TestAddress.UniqTest(xs=(x, *self.xs), p=self.p, ys=self.ys)
 
         def with_y(self, y: Address) -> TestAddress.UniqTest:
-            return self._replace(ys=(y, *self.ys))
+            # return self._replace(ys=(y, *self.ys))
+            return TestAddress.UniqTest(ys=(y, *self.ys), xs=self.xs, p=self.p)
 
         def without_x(self, x: Address) -> TestAddress.UniqTest:
-            return self._replace(xs=(a for a in self.xs if a != x))
+            # return self._replace(xs=(a for a in self.xs if a != x))
+            return TestAddress.UniqTest(
+                xs=tuple(a for a in self.xs if a != x), ys=self.ys, p=self.p
+            )
 
         def without_y(self, y: Address) -> TestAddress.UniqTest:
-            return self._replace(ys=(a for a in self.ys if a != y))
+            # return self._replace(ys=(a for a in self.ys if a != y))
+            return TestAddress.UniqTest(
+                ys=tuple(a for a in self.ys if a != y), xs=self.xs, p=self.p
+            )
 
     def test_json(self):
         def json_reparse(a: Address) -> Address:
-            from json import loads, dumps
 
             return Address.from_dict(loads(dumps(a.to_dict())))
 
         self.assertEqual(
-            example_addresses, [json_reparse(a) for a in example_addresses]
+            EXAMPLE_ADDRESSES, [json_reparse(a) for a in EXAMPLE_ADDRESSES]
         )
 
     def test_lt_gt(self):
-        from random import shuffle
 
-        s = sorted(example_addresses)
-        ss = example_addresses.copy()
+        s = sorted(EXAMPLE_ADDRESSES)
+        ss = EXAMPLE_ADDRESSES.copy()
         for _ in range(10):
             shuffle(ss)
             self.assertEqual(sorted(ss), s)
@@ -140,25 +162,30 @@ class TestAddress(unittest.TestCase):
         # a.run_with({"001 e street  st city mi":["001 E Street St Apt 1 City MI", "001 E Street St Apt 0 City MI"]})
 
     def test__eq__(self):
-        for a in example_addresses:
+        for a in EXAMPLE_ADDRESSES:
             self.assertEqual(a, a)
             soft_sames: List[Tuple[Opt[str], Opt[str]]] = [(None, "X"), ("X", None)]
             sames: List[Tuple[Opt[str], Opt[str]]] = [(None, None), ("X", "X")]
 
             for x, y in soft_sames + sames:
-                for soft in SOFT_COMPONENTS:
-                    self.assertEqual(a.replace(**{soft: x}), a.replace(**{soft: y}))
-                    self.assertNotEqual(
-                        a.replace(**{soft: "X"}), a.replace(**{soft: "Y"})
-                    )
+                for soft in SOFT_MODS:
+                    with_x = soft(x)
+                    with_y = soft(y)
+                    self.assertEqual(with_x(a), with_y(a))
+                    self.assertNotEqual(soft("X")(a), soft("Y")(a))
 
-            for hard in HARD_COMPONENTS:
+            for hard in HARD_MODS:
                 for x, y in soft_sames:
-                    self.assertNotEqual(a.replace(**{hard: x}), a.replace(**{hard: y}))
-                for x, y in sames:
-                    self.assertEqual(a.replace(**{hard: x}), a.replace(**{hard: y}))
+                    with_x = hard(x)
+                    with_y = hard(y)
+                    self.assertNotEqual(with_x(a), with_y(a))
 
-                self.assertNotEqual(a.replace(**{hard: "X"}), a.replace(**{hard: "Y"}))
+                for x, y in sames:
+                    with_x = hard(x)
+                    with_y = hard(y)
+                    self.assertEqual(with_x(a), with_y(a))
+
+                self.assertNotEqual(hard("X")(a), hard("Y")(a))
 
 
 class TestZipper(unittest.TestCase):
@@ -166,16 +193,12 @@ class TestZipper(unittest.TestCase):
         def fan_odd(n: int) -> List[int]:
             if n % 2 == 0:
                 return []
-            else:
-                return [n + 0, n + 1, n + 2]
+            return [n + 0, n + 1, n + 2]
 
         def fan_even(n: int) -> List[int]:
             if n % 2 == 1:
                 return []
-            else:
-                return [n + 0, n + 1, n + 2]
-
-        import itertools
+            return [n + 0, n + 1, n + 2]
 
         odds = [1, 3, 7]
         f_odds = list(itertools.chain.from_iterable(map(fan_odd, odds)))
@@ -183,48 +206,48 @@ class TestZipper(unittest.TestCase):
         evens = [2, 4, 8]
         f_evens = list(itertools.chain.from_iterable(map(fan_even, evens)))
 
-        input = GenericInput
+        _input = GenericInput
 
         with self.assertRaises(EndOfInputError):
-            i: GenericInput[int] = input([])
+            i: GenericInput[int] = _input([])
             Zipper(i).chomp_n(2, id_)
 
         with self.assertRaises(EndOfInputError):
-            Zipper(input([0])).chomp_n(2, id_)
+            Zipper(_input([0])).chomp_n(2, id_)
 
-        Zipper(input([2, 3, 4])).chomp_n(2, id_).test("chomp 0", [2, 3])
-        Zipper(input([5, 6])).chomp_n(2, id_).test("chomp 1", [5, 6])
+        Zipper(_input([2, 3, 4])).chomp_n(2, id_).test("chomp 0", [2, 3])
+        Zipper(_input([5, 6])).chomp_n(2, id_).test("chomp 1", [5, 6])
         # should_throw("chomp 2", EndOfInputError, lambda : )
         # should_throw("chomp 3", EndOfInputError, lambda : )
 
-        Zipper(input(odds)).takewhile(fan_odd).test("takewhile 0", f_odds)
-        i: GenericInput[int] = input([])
+        Zipper(_input(odds)).takewhile(fan_odd).test("takewhile 0", f_odds)
+        i: GenericInput[int] = _input([])
         Zipper(i).takewhile(fan_odd).test("takewhile 1", [])
-        Zipper(input(evens + odds)).takewhile(fan_even).test("takewhile 2", f_evens)
-        Zipper(input(odds + evens)).takewhile(fan_even).test("takewhile 3", [])
+        Zipper(_input(evens + odds)).takewhile(fan_even).test("takewhile 2", f_evens)
+        Zipper(_input(odds + evens)).takewhile(fan_even).test("takewhile 3", [])
 
-        Zipper(input(odds + evens + odds)).takewhile(fan_odd).takewhile(
+        Zipper(_input(odds + evens + odds)).takewhile(fan_odd).takewhile(
             fan_even
         ).takewhile(fan_odd).test("takewhile 4", f_odds + f_evens + f_odds)
 
-        Zipper(input(odds + [2])).takewhile(fan_odd).takewhile(fan_odd).takewhile(
+        Zipper(_input(odds + [2])).takewhile(fan_odd).takewhile(fan_odd).takewhile(
             fan_even
         ).test("takewhile 5", f_odds + fan_even(2))
 
         with self.assertRaises(EndOfInputError):
-            Zipper(input(odds + [2])).takewhile(fan_odd).chomp_n(2, id_)
+            Zipper(_input(odds + [2])).takewhile(fan_odd).chomp_n(2, id_)
 
-        Zipper(input(odds + [2])).takewhile(fan_odd).test_leftover("leftover 0", [2])
+        Zipper(_input(odds + [2])).takewhile(fan_odd).test_leftover("leftover 0", [2])
 
-        Zipper(input(odds)).takewhile(
+        Zipper(_input(odds)).takewhile(
             fan_odd
         )  # .test_leftover("leftover 1", []) #TODO fix this
 
-        Zipper(input([1, 2])).or_([fan_even, fan_odd]).test("or 0", [1, 2, 3])
+        Zipper(_input([1, 2])).or_([fan_even, fan_odd]).test("or 0", [1, 2, 3])
 
-        Zipper(input([2, 1])).or_([fan_even, fan_odd]).test("or 1", [2, 3, 4])
+        Zipper(_input([2, 1])).or_([fan_even, fan_odd]).test("or 1", [2, 3, 4])
 
-        Zipper(input([2, 1])).or_([]).test("or 2", [])
+        Zipper(_input([2, 1])).or_([]).test("or 2", [])
 
 
 class TestFuzzyString(unittest.TestCase):
@@ -244,6 +267,9 @@ class TestFuzzyString(unittest.TestCase):
             self.assertEqual(w, fix_typos(w))
 
 
+STOP_SEP = "dkjf4oit"
+
+
 class TestParser(unittest.TestCase):
     @staticmethod
     def addresses_to_rows(seed: int, adds: Iter[Address]) -> List[List[str]]:
@@ -251,16 +277,14 @@ class TestParser(unittest.TestCase):
         This is used for testing Parser.parse_row.
         It takes a list of addresses and returns a list of rows that should represent each address
         """
-        import random
 
         random.seed(seed)
-        STOP_SEP = "dkjf4oit"
 
         def make_row(a: Address) -> Iter[str]:
             def _(a: Address) -> Iter[str]:
                 flip = lambda: random.choice([True, False])
                 for idx, word in enumerate(a[:8]):
-                    if word == None:
+                    if word is None:
                         word = ""
                     if flip() or idx == 4:
                         yield STOP_SEP
@@ -271,20 +295,19 @@ class TestParser(unittest.TestCase):
         return [list(make_row(a)) for a in adds]
 
     def test_parse_row(self):
-        import random
 
         z = 2 ^ 10 - 1
         random.seed(z)
         p = Parser()
         seeds = [random.randrange(0 - z, z) for _ in range(16)]
         for seed in seeds:
-            from .address import example_addresses as exs
+            exs = EXAMPLE_ADDRESSES
 
             rows = self.addresses_to_rows(seed, exs)
             for row, a in zip(rows, exs):
-                r = Address(*p.parse_row(row))
-                r.reparse_test(lambda s: a)
-                if not (a == r):
+                r = p.parse_row(row).__as_address__()
+                r.reparse_test(lambda _: a)
+                if not a == r:
                     for i, (_a, _r) in enumerate(zip(a, r)):
                         if _a != _r:
                             print(i, _a, "!=", _r)
@@ -299,16 +322,14 @@ class TestParser(unittest.TestCase):
             "0 Street Apt 0 City MI",
             "1 Street City MI",
         ]
-        (adds)
+        adds
         # print([[a.pretty() for a in a_s] for a_s in d.values()])
         # print([a.pretty() for a in RawAddress.merge_duplicates(map(p, adds))])
         p = Parser(known_cities=["Zamalakoo", "Grand Rapids"])
         for a in __difficult_addresses__:
             p(a)
 
-        from .address import example_addresses
-
-        for a in example_addresses:
+        for a in EXAMPLE_ADDRESSES:
             a.reparse_test(p)
         zipless = Parser()
         zipless("123 Qwerty St Asdf NY")
@@ -343,8 +364,7 @@ class TestLogging(unittest.TestCase):
 
 class TestHammer(unittest.TestCase):
     def test_checksum(self):
-        exs = example_addresses
-        from random import shuffle
+        exs = EXAMPLE_ADDRESSES
 
         exs = list(map(Address.Set.ignore_checksum, exs))
         h = Hammer(exs)
@@ -364,15 +384,12 @@ class TestHammer(unittest.TestCase):
             self.assertEqual(Hammer(adds[:7]).batch_checksum, _0_7)
             self.assertEqual(Hammer(adds[2:6]).batch_checksum, _2_6)
 
-        def modify(a: str, b: Opt[str]) -> Fn[[Address], Address]:
-            return lambda address: address.replace(**{a: b})
-
         funcs: List[Fn[[Address], Address]] = [
-            modify("st_name", ""),
-            modify("house_number", "z"),
-            modify("unit", "Lot 4594653657555949"),
-            modify("us_state", "ZZ"),
-            modify("st_suffix", "ZZ"),
+            lambda a: a.with_st_name(""),
+            lambda a: a.with_house_number("z"),
+            lambda a: a.with_unit("Lot 4594653657555949"),
+            lambda a: a.with_us_state("ZZ"),
+            lambda a: a.with_st_suffix("ZZ"),
         ]
 
         idxs = [0, 2, 4, 6]
@@ -385,14 +402,15 @@ class TestHammer(unittest.TestCase):
         self.assertEqual(h.batch_checksum, Hammer(exs).batch_checksum)
 
         xs = exs + exs
-        for soft in SOFT_COMPONENTS:
-            f = modify(soft, None)
+        for soft in SOFT_MODS:
+            f = soft(None)
             for idx in idxs:
                 # print(f(exs[idx]))
                 xs.append(f(exs[idx]))
 
         shuffle(xs)
-        h.batch_checksum == Hammer(xs).batch_checksum
+        # TODO pass have hammer checksum not depend on order, see below
+        # self.assertEqual(h.batch_checksum, Hammer(xs).batch_checksum)
 
     def test(self):
         ambigs_1 = [

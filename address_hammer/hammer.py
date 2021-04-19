@@ -1,5 +1,8 @@
 from __future__ import annotations
-from .__types__ import Union, T, Fn, Seq, List, Tuple, Dict, Set, join, Iter, id_
+import warnings
+from math import log as math_log
+from hashlib import md5
+from .__types__ import Union, T, Fn, Seq, List, Tuple, Dict, Set, join, Iter
 from .address import Address, HashableFactory, CHECKSUM_IGNORE
 from .fuzzy_string import FixTypos
 from .parsing import Parser, ParseError, smart_batch
@@ -32,6 +35,7 @@ def check_checksum(a: str, b: str):
         return None
     if a != b:
         raise ChecksumMismatch(a, b)
+    return None
 
 
 remove_unit = Address.Set(unit=lambda x: None)
@@ -65,8 +69,8 @@ class Hammer:
     """
 
     p: Parser
-    __repair_st__: Fn[[str], str]
-    __repair_city__: Fn[[str], str]
+    __repair_st__: FixTypos
+    __repair_city__: FixTypos
     parse_errors: List[Tuple[ParseError, str]]
     ambigous_address_groups: List[List[Address]]
     __addresses__: Set[Address]
@@ -76,12 +80,12 @@ class Hammer:
     def __init__(
         self,
         input_addresses: Iter[Union[str, Address]],
-        known_cities: Seq[str] = [],
-        known_streets: Seq[str] = [],
+        known_cities: Seq[str] = (),
+        known_streets: Seq[str] = (),
         city_repair_level: int = 5,
         street_repair_level: int = 5,
-        junk_cities: Seq[str] = [],
-        junk_streets: Seq[str] = [],
+        junk_cities: Seq[str] = (),
+        junk_streets: Seq[str] = (),
         make_batch_checksum: bool = True,
     ):
 
@@ -94,8 +98,6 @@ class Hammer:
             raise ValueError(
                 f"The typo repair level must be between 0-10, not {street_repair_level}"
             )
-
-        from math import log
 
         p = Parser(known_cities=list(known_cities))
         address_strings: List[str] = []
@@ -132,12 +134,12 @@ class Hammer:
 
         addresses = list(addresses_iter())
 
-        cuttoff = log(max(len(addresses), 1))
+        cuttoff = math_log(max(len(addresses), 1))
 
         city_bag = bag_from(map(Address.Get.city, addresses))
 
         if city_repair_level == 0:
-            self.__repair_city__: Fn[[str], str] = id_
+            self.__repair_city__ = FixTypos([], cuttoff=0.0)
         else:
 
             cities = [
@@ -147,7 +149,7 @@ class Hammer:
             self.__repair_city__ = FixTypos(cities, cuttoff=city_repair_level)
 
         if street_repair_level == 0:
-            self.__repair_st__: Fn[[str], str] = id_
+            self.__repair_st__ = FixTypos([], cuttoff=0.0)
         else:
             st_name_bag = bag_from(map(Address.Get.st_name, addresses))
             streets = [
@@ -161,7 +163,6 @@ class Hammer:
         if not make_batch_checksum:
             checksum = ""
         else:
-            from hashlib import md5
 
             m = md5()
 
@@ -175,9 +176,9 @@ class Hammer:
             for a in sorted(addresses):
                 for s in a.hard_components():
                     m.update(s.encode("utf-8"))
-                for s in a.soft_components():
-                    if s:
-                        m.update(s.encode("utf-8"))
+                for _s in a.soft_components():
+                    if _s:
+                        m.update(_s.encode("utf-8"))
 
             checksum = m.hexdigest()
         self.batch_checksum = checksum
@@ -206,7 +207,6 @@ class Hammer:
         return h
 
     def __getitem__(self, a: Union[Address, str]) -> Address:
-        import warnings
 
         if isinstance(a, Address):
             check_checksum(self.batch_checksum, a.batch_checksum)
@@ -220,19 +220,15 @@ class Hammer:
             raise KeyError(str(a))
         if len(adds) == 1:
             return adds[0]
-        else:
-            msg = (
-                """
+        msg = f"""
             
             The following address was linked to more than one unit in the building.
             Consider using 'hammer.zero_or_more(address)' instead of 'hammer[address]'
 
+            {a.pretty()}
             """
-                + a.pretty()
-                + "\n"
-            )
-            warnings.warn(msg)
-            return remove_unit(adds[0])
+        warnings.warn(msg)
+        return remove_unit(adds[0])
 
     def __len__(self) -> int:
         return len(self.__addresses__)

@@ -1,6 +1,7 @@
 from __future__ import annotations
-
+from .__regex__ import normalize_whitespace
 from .__types__ import (
+    Union,
     join,
     List,
     Set,
@@ -14,8 +15,13 @@ from .__types__ import (
     Tuple,
     NamedTuple,
     Any,
-    id_,
+    # id_,
 )
+
+
+def id_(t: T) -> T:
+    return t
+
 
 SOFT_COMPONENTS = ["st_suffix", "st_NESW", "unit", "zip_code"]
 HARD_COMPONENTS = ["house_number", "st_name", "city", "us_state"]
@@ -27,12 +33,13 @@ class InvalidAddressError(Exception):
     orig: str
 
     def __init__(self, orig: str):
+        super().__init__(self, orig)
         self.orig = orig
 
 
 def opt_sum(a: Opt[T], b: Opt[T]) -> Opt[T]:
     "The monoidal sum of two optional values"
-    if a != None:
+    if a is not None:
         return a
     return b
 
@@ -67,7 +74,9 @@ class Address(NamedTuple):
     def __hash__(self) -> int:
         return hash((self.hard_components(), self.soft_components()))
 
-    def __eq__(self, other: Address) -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Address):
+            raise NotImplementedError
         if self.__class__ != other.__class__:
             # don't use isinstance because equality is not defined for Address, RawAddress
             return False
@@ -78,13 +87,13 @@ class Address(NamedTuple):
 
         for s_soft, o_soft in zip(self.soft_components(), other.soft_components()):
 
-            if s_soft != None and o_soft != None:
+            if s_soft is not None and o_soft is not None:
                 if s_soft != o_soft:
                     return False
         return True
 
-    def __ne__(self, other: Address) -> bool:
-        return not (self == other)
+    def __ne__(self, other: object) -> bool:
+        return not self == other
 
     def __str_softs__(self) -> List[str]:
         def x(s: Opt[str]) -> str:
@@ -94,13 +103,17 @@ class Address(NamedTuple):
 
         return list(map(x, self.soft_components()))
 
-    def __gt__(self, other: Address) -> bool:
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, Address):
+            raise NotImplementedError
         # TODO use soft components in __lt__ and __gt__
         a = self.hard_components()  # , self.__str_softs__()
         b = other.hard_components()  # , other.__str_softs__()
         return a > b
 
-    def __lt__(self, other: Address) -> bool:
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Address):
+            raise NotImplementedError
         a = self.hard_components()  # , self.soft_components()
         b = other.hard_components()  # , other.soft_components()
         return a < b
@@ -120,15 +133,19 @@ class Address(NamedTuple):
         return d
 
     @staticmethod
-    def from_dict(d: Dict[str, Any]) -> Address:
+    def from_dict(d: Dict[str, Any]) -> Union[Address, RawAddress]:
         is_raw: Any = d["is_raw"]
         del d["is_raw"]
-        if is_raw == True:
-            r = RawAddress(**d)
-        elif is_raw == False:
-            r = Address(**d)
-        else:
-            raise Exception("invalid dict format for Address")
+        if is_raw == "false":
+            is_raw = False
+        elif is_raw == "true":
+            is_raw = True
+        if not isinstance(is_raw, bool):
+            raise Exception("invalid dict format for Address (check 'is_raw')")
+        make = Address
+        if is_raw is True:
+            make = RawAddress
+        r = make(**d)
         d["is_raw"] = is_raw
         return r
 
@@ -144,9 +161,6 @@ class Address(NamedTuple):
                     )
                 )
 
-    def replace(self, **kwargs: Dict[str, str]) -> Address:
-        return self._replace(**kwargs)
-
     def soft_eq(self, other: Address) -> bool:
         raise NotImplementedError
 
@@ -158,24 +172,39 @@ class Address(NamedTuple):
             raise Exception("cannot combine_soft two different addresses.")
         # by our definition of equality,
         # there can only be at most one non-None field of each opt-valued pair
-        return self.replace(
-            **{
-                "st_suffix": opt_sum(self.st_suffix, other.st_suffix),
-                "st_NESW": opt_sum(self.st_NESW, other.st_NESW),
-                "unit": opt_sum(self.unit, other.unit),
-                "zip_code": opt_sum(self.zip_code, other.zip_code),
-            }
+        make = Address
+        if isinstance(self, RawAddress):
+            make = RawAddress
+
+        return make(
+            house_number=self.house_number,
+            st_name=self.st_name,
+            st_suffix=opt_sum(self.st_suffix, other.st_suffix),
+            st_NESW=opt_sum(self.st_NESW, other.st_NESW),
+            unit=opt_sum(self.unit, other.unit),
+            city=self.city,
+            us_state=self.us_state,
+            zip_code=opt_sum(self.zip_code, other.zip_code),
+            orig=self.orig,
+            batch_checksum=self.batch_checksum,
         )
 
     def combine_soft_dict(self, other: Dict[str, Opt[str]]) -> Address:
         f: Fn[[str], Opt[str]] = lambda label: get(other, label, None)
-        return self.replace(
-            **{
-                "st_suffix": opt_sum(self.st_suffix, f("st_suffix")),
-                "st_NESW": opt_sum(self.st_NESW, f("st_NESW")),
-                "unit": opt_sum(self.unit, f("unit")),
-                "zip_code": opt_sum(self.zip_code, f("zip_code")),
-            }
+        make = Address
+        if isinstance(self, RawAddress):
+            make = RawAddress
+        return make(
+            house_number=self.house_number,
+            st_name=self.st_name,
+            st_suffix=opt_sum(self.st_suffix, f("st_suffix")),
+            st_NESW=opt_sum(self.st_NESW, f("st_NESW")),
+            unit=opt_sum(self.unit, f("unit")),
+            city=self.city,
+            us_state=self.us_state,
+            zip_code=opt_sum(self.zip_code, f("zip_code")),
+            orig=self.orig,
+            batch_checksum=self.batch_checksum,
         )
 
     def __as_address__(self) -> Address:
@@ -195,13 +224,12 @@ class Address(NamedTuple):
         return self
 
     def pretty(self) -> str:
-        from .__regex__ import normalize_whitespace
 
         as_dict = self._asdict()
         softs = {"st_NESW": "", "st_suffix": "", "unit": "", "zip_code": ""}
 
-        for k in softs.keys():
-            if as_dict[k] != None:
+        for k in softs:
+            if as_dict[k] is not None:
                 softs[k] = as_dict[k]
 
         l = sorted(softs["st_NESW"].split(), key=len)
@@ -287,6 +315,33 @@ class Address(NamedTuple):
         def ignore_checksum(a: Address) -> Address:
             return a._replace(batch_checksum=CHECKSUM_IGNORE)
 
+    def with_house_number(self, s: str) -> Address:
+        return self._replace(house_number=s)
+
+    def with_st_name(self, s: str) -> Address:
+        return self._replace(st_name=s)
+
+    def with_st_suffix(self, s: Opt[str]) -> Address:
+        return self._replace(st_suffix=s)
+
+    def with_st_NESW(self, s: Opt[str]) -> Address:
+        return self._replace(st_NESW=s)
+
+    def with_unit(self, s: Opt[str]) -> Address:
+        return self._replace(unit=s)
+
+    def with_city(self, s: str) -> Address:
+        return self._replace(city=s)
+
+    def with_us_state(self, s: str) -> Address:
+        return self._replace(us_state=s)
+
+    def with_zip_code(self, s: Opt[str]) -> Address:
+        return self._replace(zip_code=s)
+
+    def with_orig(self, s: str) -> Address:
+        return self._replace(orig=s)
+
 
 class RawAddress(Address):
     """
@@ -307,7 +362,7 @@ class HashableFactory(NamedTuple):
         return s
 
     def hashable_addresses(self, addresses: Iter[Address]) -> Iter[Address]:
-        return join(map(self, addresses))
+        return join(map(lambda x: self(x), addresses))
 
     @staticmethod
     def from_all_addresses(addresses: Iter[Address]) -> HashableFactory:
@@ -323,7 +378,7 @@ class HashableFactory(NamedTuple):
 
         d: Dict[Seq[str], Dict[str, Set[str]]] = {}
 
-        unit_store: Dict[Seq[str], Dict[str, List[Address]]] = {}
+        unit_store: Dict[Tuple[str, str, str, str], Dict[str, List[Address]]] = {}
         #             dict[hards, dict[unit, addresses]]
         for a in addresses:
             hards = a.hard_components()
@@ -374,23 +429,20 @@ class HashableFactory(NamedTuple):
 
             if a.unit:
                 return [a.combine_soft_dict(a_dict).__as_address__()]
-            else:
-                empty_d: Dict[str, List[Address]] = {}
-                units: Dict[str, List[Address]] = get(unit_store, hards, empty_d)
-                if not units:
-                    return [a.combine_soft_dict(a_dict).__as_address__()]
-                for adds in units.values():
-                    ret.extend(
-                        [a.combine_soft(b).__as_address__() for b in adds if a == b]
-                    )
-                return ret
+            empty_d: Dict[str, List[Address]] = {}
+            units: Dict[str, List[Address]] = unit_store.get(hards, empty_d)
+            if not units:
+                return [a.combine_soft_dict(a_dict).__as_address__()]
+            for adds in units.values():
+                ret.extend([a.combine_soft(b).__as_address__() for b in adds if a == b])
+            return ret
 
         # remove ambigous apt addresses
         for hards, u_adds in unit_store.items():
             for unit, adds in u_adds.items():
                 unit_store[hards][unit] = list(join(filter(None, map(fill_in, adds))))
 
-        def is_ambig(softs: Dict[str, Set[Opt[str]]]) -> bool:
+        def is_ambig(softs: Dict[str, Set[str]]) -> bool:
             """
             Is there more that one value for any given soft component? (except unit)
             ...
@@ -417,7 +469,7 @@ class HashableFactory(NamedTuple):
 
         def fix(a: Address) -> List[Address]:
             adds = fill_in(a)
-            if adds == None:
+            if adds is None:
                 return []
             return adds
 
@@ -427,10 +479,10 @@ class HashableFactory(NamedTuple):
 def merge_duplicates(addresses: Iter[Address]) -> Set[Address]:
     addresses = list(addresses)
     f = HashableFactory.from_all_addresses(addresses)
-    return set(join(map(f, addresses)))
+    return set(join(map(lambda x: f(x), addresses)))
 
 
-example_addresses = [
+EXAMPLE_ADDRESSES = [
     Address(
         house_number="3710",
         st_name="MICHIGANE",

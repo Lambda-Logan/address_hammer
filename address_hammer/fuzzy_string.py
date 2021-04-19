@@ -1,5 +1,7 @@
 from __future__ import annotations
-from .__types__ import Dict, Iter, Tuple, Fn, T, Set, Any
+from math import sqrt, nan
+import re
+from .__types__ import Dict, Iter, Tuple, Fn, T, Set, Any, join, Fns_Of
 
 Bow = Dict[str, float]
 
@@ -39,10 +41,9 @@ def weighted_jaccard(a: Bow, b: Bow) -> float:
     The weighted Jaccard similary between two sparse vectors
     see https://en.wikipedia.org/wiki/Jaccard_index#Weighted_Jaccard_similarity_and_distance
     """
-    from math import nan
 
-    n = 0
-    d = 0
+    n = 0.0
+    d = 0.0
     for x, y in corresponding_colums(a, b):
         n = n + min(x, y)
         d = d + max(x, y)
@@ -62,6 +63,16 @@ def const_false(_: Any) -> bool:
     return False
 
 
+class Fns_of_FixTypos(Fns_Of):
+    @staticmethod
+    def sims_of(s: str) -> Iter[Tuple[str, float]]:
+        return []
+
+    @staticmethod
+    def should_maybe_fix(s: str) -> bool:
+        return False
+
+
 class FixTypos:
     """
     A callable that will correct typos given an inital vocabulary.
@@ -73,19 +84,20 @@ class FixTypos:
         c = FixTypos(vocablist, cuttoff = 0 )
     """
 
-    sims_of: Fn[[str], Iter[Tuple[str, float]]]
-    should_maybe_fix: Fn[[str], bool]
     cuttoff: float
+    __fns__: Fns_of_FixTypos
+
+    @property
+    def sims_of(self) -> Fn[[str], Iter[Tuple[str, float]]]:
+        return self.__fns__.sims_of
+
+    @property
+    def should_maybe_fix(self) -> Fn[[str], bool]:
+        return self.__fns__.should_maybe_fix
 
     def __init__(self, words: Iter[str], cuttoff: float = 5):
-
-        import re
-        from itertools import chain
-
-        join = chain.from_iterable
-
+        self.__fns__ = Fns_of_FixTypos()
         if cuttoff == 0.0:
-            self.should_maybe_fix: Fn[[str], bool] = const_false
             return None
         self.cuttoff = level_to_dec(cuttoff)
 
@@ -100,39 +112,41 @@ class FixTypos:
             tri_bow = skipgram_bow(word)
             # vec_of[word] = swm.word2row(word)
             bow_of[word] = skipgram_bow(word)
-            for tri in tri_bow.keys():
+            for tri in tri_bow:
                 words_with[tri] = words_with.get(tri, set([]))
                 words_with[tri].add(word)
         uppers = re.compile(r"[A-Z]")
         digits = re.compile(r"\d+")
 
-        def should_maybe_fix(s: str) -> bool:
-            s_uppers = re.findall(uppers, s)
-            if len("".join(s_uppers)) < 4:
-                return False
-            if s in bow_of:
-                return False
-            return True
+        class __Fns_of_FixTypos__(Fns_of_FixTypos):
+            @staticmethod
+            def should_maybe_fix(s: str) -> bool:
+                s_uppers = re.findall(uppers, s)
+                if len("".join(s_uppers)) < 4:
+                    return False
+                if s in bow_of:
+                    return False
+                return True
 
-        self.should_maybe_fix = should_maybe_fix
+            @staticmethod
+            def sims_of(s: str) -> Iter[Tuple[str, float]]:
+                words: Set[str] = set([])
+                bow = skipgram_bow(s)
+                # s_vec = swm.word2row(s)
+                s_bow = skipgram_bow(s)
+                s_digits = re.findall(digits, s)
+                for tri in bow:
+                    words.update(words_with.get(tri, []))
+                return map(
+                    lambda w: (w, weighted_jaccard(bow_of[w], s_bow)),
+                    filter(
+                        lambda w: w != s and s_digits == re.findall(digits, w), words
+                    ),
+                )
 
-        def sims_of(s: str) -> Iter[Tuple[str, float]]:
-            words: Set[str] = set([])
-            bow = skipgram_bow(s)
-            # s_vec = swm.word2row(s)
-            s_bow = skipgram_bow(s)
-            s_digits = re.findall(digits, s)
-            for tri in bow.keys():
-                words.update(words_with.get(tri, []))
-            return map(
-                lambda w: (w, weighted_jaccard(bow_of[w], s_bow)),
-                filter(lambda w: w != s and s_digits == re.findall(digits, w), words),
-            )
-
-        self.sims_of = sims_of
+        self.__fns__ = __Fns_of_FixTypos__()
 
     def __call__(self, s: str) -> str:
-        from math import sqrt
 
         s = s.upper()
         if self.should_maybe_fix(s):

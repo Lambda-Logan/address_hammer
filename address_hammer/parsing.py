@@ -1,12 +1,12 @@
 from __future__ import annotations
-from .__types__ import *
 from typing import Pattern, Match
 import re
-from .address import RawAddress
+from .__types__ import *
+from .address import Address, RawAddress
 from . import address
 from . import __regex__ as regex
 from .__zipper__ import Zipper, GenericInput, EndOfInputError, Apply
-
+from .__zipper__ import x as zipper_x
 
 # TODO correctly handle all usps secondary unit identifiers and 1/2
 
@@ -30,7 +30,7 @@ class EndOfAddressError(ParseError):
     """
 
     def __init__(self, orig: str, reason: str):
-        super(ParseError, self).__init__(reason + ": end of input of " + orig)
+        super().__init__(orig, reason + ": end of input")
 
 
 class ParserConfigError(Exception):
@@ -78,7 +78,7 @@ class AddressComponent(NamedTuple):
 
             m = regex.match(s, self.compiled_pattern)
 
-            if m == None:
+            if m is None:
                 if self.optional:
                     return []
                 raise ParseError(s, self.label)
@@ -383,12 +383,14 @@ _HOUSE_NUMBER = AddressComponent(
 
 
 def __make_st_name__(
-    known_cities: List[Pattern[str]] = [],
+    known_cities: Seq[Pattern[str]] = (),
 ) -> Fn[[str], Seq[ParseStep]]:
     return AddressComponent(
         label="st_name",
         compiled_pattern=re.compile(r"\w+"),
-        stops_on=__make_stops_on__([st_suffix_R, st_NESW_R, unit_R] + known_cities),
+        stops_on=__make_stops_on__(
+            [st_suffix_R, st_NESW_R, unit_R] + list(known_cities)
+        ),
     ).arrow_parse()
 
 
@@ -397,13 +399,14 @@ def __make_st_name__(
 
 def __chomp_unit__(words: Seq[str]) -> Seq[ParseStep]:
     assert len(words) == 2
+    unit: Opt[str] = None
     if words[0] == "#":
         unit = "APT"
     else:
         unit = regex.match(words[0], unit_R)
     identifier = regex.match(words[1], unit_identifier_R)
     # print("uunit", unit, identifier)
-    if (unit == None) or (identifier == None):
+    if (unit is None) or (identifier is None):
         # print("unit failed")
         return []
     result = ParseStep(value="{0} {1}".format(unit, identifier), label="unit")
@@ -428,7 +431,7 @@ address_midpoint_R = re.compile(regex.or_(st_suffices + st_NESWs + unit_types))
 
 
 def str_to_opt(s: Opt[str]) -> Opt[str]:
-    if s == None:
+    if s is None:
         return None
     if not s.split():
         return None
@@ -440,6 +443,16 @@ def city_repl(s: Match[str]) -> str:
 
 
 Zip = Zipper[str, str]
+
+
+class Fns_Of_Parser(Fns_Of):
+    @staticmethod
+    def city(s: str) -> Seq[ParseStep]:
+        raise NotImplementedError
+
+    @staticmethod
+    def st_name(s: str) -> Seq[ParseStep]:
+        raise NotImplementedError
 
 
 class Parser:
@@ -474,15 +487,14 @@ class Parser:
 
     __Apply__ = Apply
     __ex_types__ = {"ex_types": tuple([ParseError])}
+    __fns__: Fns_Of_Parser
     blank_parse: Opt[Parser]
-    city: Fn[[str], Seq[ParseStep]]
-    st_name: Fn[[str], Seq[ParseStep]]
     required: Set[str] = set(address.HARD_COMPONENTS)
     optional: Set[str] = set(address.SOFT_COMPONENTS)
     known_cities: List[str] = []
     known_cities_R: Opt[Pattern[str]] = None
 
-    def __init__(self, known_cities: List[str] = []):
+    def __init__(self, known_cities: Seq[str] = ()):
 
         known_cities = list(filter(None, known_cities))
         if known_cities:
@@ -499,19 +511,32 @@ class Parser:
             stops_on=__make_stops_on__([us_state_R, re.compile(r"\d+")]),
         ).arrow_parse()
 
-        def city_B(s: str) -> Seq[ParseStep]:
-            # print("city??", s)
-            # print("\t", city_A(s))
-            return [
-                ParseStep(value=pr.value.replace("_", " "), label=pr.label)
-                for pr in city_A(s)
-            ]
-
-        self.city = city_B
         if self.known_cities_R:
-            self.st_name = __make_st_name__([self.known_cities_R])
+            st_name = __make_st_name__([self.known_cities_R])
         else:
-            self.st_name = __make_st_name__()
+            st_name = __make_st_name__()
+
+        class __Fns_Of_Parser__(Fns_Of_Parser):
+            @staticmethod
+            def city(s: str) -> Seq[ParseStep]:
+                return [
+                    ParseStep(value=pr.value.replace("_", " "), label=pr.label)
+                    for pr in city_A(s)
+                ]
+
+            @staticmethod
+            def st_name(s: str) -> Seq[ParseStep]:
+                return st_name(s)
+
+        self.__fns__ = __Fns_Of_Parser__()
+
+    @property
+    def city(self) -> Fn[[str], Seq[ParseStep]]:
+        return self.__fns__.city
+
+    @property
+    def st_name(self) -> Fn[[str], Seq[ParseStep]]:
+        return self.__fns__.st_name
 
     def __tokenize__(self, s: str) -> str:
         s = s.replace(",", " ")
@@ -535,8 +560,8 @@ class Parser:
         return [
             Apply.consume_with(_HOUSE_NUMBER, **p),
             Apply.consume_with(_ST_NESW, **p),
-            Apply.takewhile(self.st_name, **p),
-            Apply.takewhile(_ST_SUFFIX, **p),
+            Apply.takewhile(self.st_name, False, **p),
+            Apply.takewhile(_ST_SUFFIX, False, **p),
             Apply.consume_with(_ST_NESW, **p),
         ]
 
@@ -572,11 +597,15 @@ class Parser:
         }
         for opt in Parser.optional:
             str_d[opt] = str_to_opt(str_d[opt])
-        return RawAddress(orig=_s, **str_d)
+        str_d["is_raw"] = "true"
+        str_d["orig"] = _s
+        a = Address.from_dict(str_d)
+        assert isinstance(a, RawAddress)
+        return a
 
     def __call__(self, _s: str, checked: bool = True) -> RawAddress:
         Apply = Parser.__Apply__
-        if self.blank_parse != None:
+        if self.blank_parse is not None:
             try:
                 return self.blank_parse(_s, checked=checked)
             except:
@@ -591,7 +620,7 @@ class Parser:
         if data and regex.match(data[-1], zip_code_R):
             zip_code = Apply.consume_with(_ZIP_CODE, **p)
         # TODO make Zipper.takewhile ignore exceptions after 1 consumed???
-        funcs = [
+        funcs: List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = [
             *self.__hn_nesw__(),
             unit,
             Apply.takewhile(self.city),
@@ -615,8 +644,6 @@ class Parser:
         return self.__collect_results__(_s, z.results, checked)
 
     def parse_row(self, row: Iter[str]) -> RawAddress:
-        from .__zipper__ import x, Zipper, Apply
-        from .__zipper__ import GenericInput as Input
 
         unit: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = lambda z: z
         # zip_code: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
@@ -626,9 +653,11 @@ class Parser:
                 unit = Apply.chomp_n(2, __chomp_unit__)
                 break
         leftovers = [cell.split() for cell in row]
-        z: Zipper[List[str], ParseStep] = Zipper(leftover=Input(leftovers), results=[])
+        _z: Zipper[Seq[str], ParseStep] = Zipper(
+            leftover=GenericInput(leftovers), results=[]
+        )
 
-        funcs = [
+        funcs: List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = [
             *self.__hn_nesw__(),
             unit,
             Apply.takewhile(self.city),
@@ -636,7 +665,7 @@ class Parser:
             Apply.consume_with(_ZIP_CODE),
         ]
 
-        z = x(z, funcs)
+        z = zipper_x(_z, funcs)
 
         results = list(z.results)
 
@@ -664,9 +693,8 @@ def smart_batch(
             a = p(add)
             cities.add(a.city)
             pre += 1
-            if pre % 1000 == 0:
-                print(str(pre // 1000) + "k good so far!")
-                pass
+            # if pre % 1000 == 0:
+            # print(str(pre // 1000) + "k good so far!")
             yield a
         except EndOfInputError:
             errs.append(add)

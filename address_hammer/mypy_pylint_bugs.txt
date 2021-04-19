@@ -1,0 +1,5 @@
+Cannot assign to field of Callable type #708
+https://github.com/python/mypy/issues/708
+
+https://github.com/python/mypy/issues/2427
+Unable to assign a function a method #2427

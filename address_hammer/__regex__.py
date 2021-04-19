@@ -1,8 +1,8 @@
 import re
 import string
+from typing import Pattern
 
 from .__types__ import Iter, Dict, Union, Opt, Seq
-from typing import Pattern
 
 
 def or_(l: Iter[str]) -> str:
@@ -43,16 +43,14 @@ def match(s: str, pat: Pattern[str]) -> Opt[str]:
     m = re.search(pat, s)
     if m:
         return m.group(0)
-    else:
-        return None
+    return None
 
 
 def match_all(s: str, pat: Pattern[str]) -> Seq[str]:
     m = re.findall(pat, s)
     if not m:
         return ()
-    else:
-        return m.groups()
+    return m.groups()
 
 
 (or_, and_)

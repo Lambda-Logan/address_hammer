@@ -1,6 +1,6 @@
 from __future__ import annotations
+from typing import Generic, Iterator
 from .__types__ import Fn, Iter, Seq, T, TypeVar, Any, Type, List, Tuple
-from typing import Generic
 
 
 class EndOfInputError(Exception):
@@ -57,7 +57,7 @@ class GenericInput(Generic[T]):
         return (self.item(), self.rest())
 
     @staticmethod
-    def from_str(s: str) -> GenericInput[T]:
+    def from_str(s: str) -> GenericInput[str]:
         return GenericInput(s.upper().split())
 
     def empty(self) -> bool:
@@ -119,7 +119,7 @@ class Zipper(Generic[I, O]):
     leftover: GenericInput[I]
     results: Iter[O]
 
-    def __init__(self, leftover: GenericInput[I], results: Iter[O] = []):
+    def __init__(self, leftover: GenericInput[I], results: Iter[O] = ()):
         self.leftover = leftover
         self.results = results
 
@@ -145,7 +145,7 @@ class Zipper(Generic[I, O]):
         self,
         n: int,
         list_func: Fn[[Seq[I]], Seq[O]],  # Idk how to typecheck [*args: I]
-        ex_types: Seq[Type[Exception]] = [Uncatchable],
+        ex_types: Seq[Type[Exception]] = (Uncatchable,),
     ) -> Zipper[I, O]:
         """
         'list_func' is a function taking an 'n' length list of type 'I' and returning a Sequence[O]
@@ -172,7 +172,7 @@ class Zipper(Generic[I, O]):
     def or_(
         self,
         funcs: Seq[Fn[[I], Seq[O]]],
-        ex_types: Seq[Type[Exception]] = [Uncatchable],
+        ex_types: Seq[Type[Exception]] = (Uncatchable,),
     ) -> Zipper[I, O]:
         """
         Takes a sequence of (i -> Sequence[O]),
@@ -195,7 +195,7 @@ class Zipper(Generic[I, O]):
         return self
 
     def consume_with(
-        self, func: Fn[[I], Seq[O]], ex_types: Seq[Type[Exception]] = [Uncatchable]
+        self, func: Fn[[I], Seq[O]], ex_types: Seq[Type[Exception]] = (Uncatchable,)
     ) -> Zipper[I, O]:
         """
         If 'func(i)' returns a non-empty list, 'consume_with' will consume one item of input and the results are accumulated.
@@ -209,7 +209,7 @@ class Zipper(Generic[I, O]):
         self,
         pred_arrow: Fn[[I], Seq[O]],
         single: bool = False,
-        ex_types: Seq[Type[Exception]] = [Uncatchable],
+        ex_types: Seq[Type[Exception]] = (Uncatchable,),
     ) -> Zipper[I, O]:
         """
         'pred_arrow' is (i -> Sequence[o]), the same as 'consume_with'
@@ -218,12 +218,12 @@ class Zipper(Generic[I, O]):
         """
         n: int = 0
         results: List[O] = []
-
+        leftover = []
         if single:
             try:
                 leftover = [self.leftover.item()]
             except tuple(ex_types):
-                leftover: List[I] = []
+                pass
         else:
             leftover = [a for a in self.leftover]
 
@@ -266,7 +266,7 @@ def x(
     leftover: GenericInput[Seq[I]] = _z.leftover
     empty: GenericInput[I] = GenericInput([])
     z: Zipper[I, O] = Zipper(leftover=empty, results=_z.results)
-    funcs: Iter[Fn[[Zipper[I, O]], Zipper[I, O]]] = iter(_funcs)
+    funcs: Iterator[Fn[[Zipper[I, O]], Zipper[I, O]]] = iter(_funcs)
     for seq in leftover:
         l = GenericInput(seq)
         while not l.empty():
@@ -275,7 +275,7 @@ def x(
             except StopIteration:
                 return z
             y: Zipper[I, O] = Zipper(leftover=l, results=z.results)
-            z: Zipper[I, O] = f(y)
+            z = f(y)
             l = z.leftover
     return z
 
@@ -283,7 +283,7 @@ def x(
 class Apply:
     @staticmethod
     def consume_with(
-        func: Fn[[I], Seq[O]], ex_types: Seq[Type[Exception]] = [Uncatchable]
+        func: Fn[[I], Seq[O]], ex_types: Seq[Type[Exception]] = (Uncatchable,)
     ) -> Fn[[Zipper[I, O]], Zipper[I, O]]:
         return lambda z: z.takewhile(func, ex_types=ex_types, single=True)
 
@@ -291,7 +291,7 @@ class Apply:
     def takewhile(
         pred_arrow: Fn[[I], Seq[O]],
         single: bool = False,
-        ex_types: Seq[Type[Exception]] = [Uncatchable],
+        ex_types: Seq[Type[Exception]] = (Uncatchable,),
     ) -> Fn[[Zipper[I, O]], Zipper[I, O]]:
         return lambda z: z.takewhile(pred_arrow, ex_types=ex_types, single=single)
 
@@ -312,6 +312,6 @@ class Apply:
     def chomp_n(
         n: int,
         list_func: Fn[[Seq[I]], Seq[O]],  # Idk how to typecheck [*args: I]
-        ex_types: Seq[Type[Exception]] = [Uncatchable],
+        ex_types: Seq[Type[Exception]] = (Uncatchable,),
     ) -> Fn[[Zipper[I, O]], Zipper[I, O]]:
         return lambda z: z.chomp_n(n, list_func=list_func, ex_types=ex_types)
