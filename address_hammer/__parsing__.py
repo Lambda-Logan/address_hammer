@@ -2,8 +2,8 @@ from __future__ import annotations
 from typing import Pattern, Match
 import re
 from .__types__ import *
-from .address import Address, RawAddress
-from . import address
+from .__address__ import Address, RawAddress
+from . import __address__ as address
 from . import __regex__ as regex
 from .__zipper__ import Zipper, GenericInput, EndOfInputError, Apply
 from .__zipper__ import x as zipper_x

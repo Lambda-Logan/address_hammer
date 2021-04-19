@@ -5,17 +5,17 @@ import random
 from json import loads, dumps
 import itertools
 from .__types__ import Seq, Dict, Opt, join, List, id_, Iter, Any, Fn, NamedTuple, Tuple
-from .address import (
+from .__address__ import (
     Address,
     EXAMPLE_ADDRESSES,
     merge_duplicates,
     HashableFactory,
 )
-from .parsing import Parser, __difficult_addresses__, ParseError
+from .__parsing__ import Parser, __difficult_addresses__, ParseError
 from .__zipper__ import EndOfInputError, Zipper, GenericInput
-from .fuzzy_string import FixTypos
-from .hammer import Hammer
-from .__logging__ import log_parse_with
+from .__fuzzy_string__ import FixTypos
+from .__hammer__ import Hammer
+from .__logging__ import log_parse_steps_using
 
 
 def parse_benchmak():
@@ -347,15 +347,15 @@ class TestParser(unittest.TestCase):
 
 class TestLogging(unittest.TestCase):
     def test_logging(self):
-        with log_parse_with(lambda pair: None):
+        with log_parse_steps_using(lambda pair: None):
             tp = TestParser()
             tp.test()
             tp.test_parse_row()
 
         def throw(_: Any) -> None:
-            raise Exception("log_parse_with.__exit__ failed")
+            raise Exception("log_parse_steps_using.__exit__ failed")
 
-        with log_parse_with(throw):
+        with log_parse_steps_using(throw):
             pass
 
         p = Parser()

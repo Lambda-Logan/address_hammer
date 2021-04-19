@@ -2,7 +2,7 @@ from __future__ import annotations
 from contextlib import AbstractContextManager
 from .__zipper__ import Apply as ZApply
 from .__zipper__ import Zipper, GenericInput, Uncatchable, I, O
-from .parsing import Parser
+from .__parsing__ import Parser
 from .__types__ import Fn, Tuple, Any, Seq, Type
 
 

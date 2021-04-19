@@ -3,9 +3,9 @@ import warnings
 from math import log as math_log
 from hashlib import md5
 from .__types__ import Union, T, Fn, Seq, List, Tuple, Dict, Set, join, Iter
-from .address import Address, HashableFactory, CHECKSUM_IGNORE
-from .fuzzy_string import FixTypos
-from .parsing import Parser, ParseError, smart_batch
+from .__address__ import Address, HashableFactory, CHECKSUM_IGNORE
+from .__fuzzy_string__ import FixTypos
+from .__parsing__ import Parser, ParseError, smart_batch
 
 Bag = Dict[str, int]
 
