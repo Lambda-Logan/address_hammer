@@ -166,34 +166,40 @@ address = p(s)
 
 # Debugging
 
-Use `with_log_info`.
+The main debugging tool is `log_parse_steps_using`.
 
 ```python
-from address_hammer import Parser, RawAddress, with_log_info
-s = "9393 Pretty Cloud Rd, Sky Town WY"
+from address_hammer import Parser, RawAddress, log_parse_steps_using
 p = Parser()
-address: RawAddress = with_log_info(lambda s: p(s), s, print)
+with log_parse_steps_using(print):
+    p("9393 Pretty Cloud Rd, Sky Town WY")
 ```
 ... will print the following
 ```python
-ParseResult(label='house_number', value='9393')
-ParseResult(label='st_name', value='PRETTY')
-ParseResult(label='st_name', value='CLOUD')
-ParseResult(label='st_suffix', value='RD')
-ParseResult(label='city', value='SKY')
-ParseResult(label='city', value='TOWN')
-ParseResult(label='us_state', value='WY')
+ParseStep(label='house_number', value='9393')
+ParseStep(label='st_name', value='PRETTY')
+ParseStep(label='st_name', value='CLOUD')
+ParseStep(label='st_suffix', value='RD')
+ParseStep(label='city', value='SKY')
+ParseStep(label='city', value='TOWN')
+ParseStep(label='us_state', value='WY')
 ```
 
-This is useful to find out why an address didn't parse correctly. For example, if we had use the string `"234 S Bar  Fooville MA"`, then it would print the following and then raise a `ParseError`
+This is useful to find out why an address didn't parse correctly. For example, if we had use the string `"123 Foo Barville AZ"`, then it would print the following and then raise a `ParseError`
 
 ```python
-ParseResult(label='house_number', value='234')
-ParseResult(label='st_NESW', value='S')
-ParseResult(label='st_name', value='BAR')
-ParseResult(label='st_name', value='FOOVILLE')
-ParseResult(label='st_name', value='MA')
->>> address_hammer.parsing.ParseError: @ Could not identify city: 234 S Bar  Fooville MA
+with log_parse_steps_using(print):
+    p("123 Foo Barville AZ")
+```
+
+will print the following and then raise an error
+```python
+ParseStep(label='house_number', value='123')
+ParseStep(label='st_name', value='FOO')
+ParseStep(label='st_name', value='BARVILLE') # st_name never stops because there is nothing between the st_name and the city
+ParseStep(label='st_name', value='AZ')
+
+>>> ParseError: @ Could not identify us_state: 123 Foo Barville AZ
 ```
 
 
