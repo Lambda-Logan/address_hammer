@@ -6,7 +6,7 @@ from .parsing import Parser
 from .__types__ import Fn, Tuple, Any, Seq, Type
 
 
-class LogParseWith(AbstractContextManager):
+class LogParseUsing(AbstractContextManager):
     def __init__(self, log: Fn[[Any], None]):
         def logged_fn(
             fn: Fn[[Zipper[I, O]], Zipper[I, O]]
@@ -54,7 +54,7 @@ class LogParseWith(AbstractContextManager):
         self.logged_apply = LoggedApply
         self.z_apply = ZApply
 
-    def __enter__(self) -> LogParseWith:
+    def __enter__(self) -> LogParseUsing:
         Parser.__Apply__ = self.logged_apply
         return self
 
@@ -63,5 +63,5 @@ class LogParseWith(AbstractContextManager):
         return False
 
 
-def log_parse_with(log: Fn[[Tuple[str, str]], None]) -> LogParseWith:
-    return LogParseWith(log)
+def log_parse_steps_using(log: Fn[[Tuple[str, str]], None]) -> LogParseUsing:
+    return LogParseUsing(log)

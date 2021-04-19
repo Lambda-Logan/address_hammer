@@ -1,7 +1,7 @@
 from .address import Address, RawAddress, InvalidAddressError
 from .parsing import ParseStep, Parser, ParseError, EndOfAddressError
 from .hammer import Hammer
-from .__logging__ import log_parse_with
+from .__logging__ import log_parse_steps_using
 
 """
 p = Parser(known_cities="Houston Dallas".split())
@@ -31,6 +31,6 @@ __all__ = [
     "RawAddress",
     "InvalidAddressError",
     "Hammer",
-    "log_parse_with",
+    "log_parse_steps_using",
     "ParseStep",
 ]
