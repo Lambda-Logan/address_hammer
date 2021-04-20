@@ -271,6 +271,14 @@ class Address(NamedTuple):
             )
         )
 
+    def as_row(self) -> List[str]:
+        def to_str(s: Opt[str]) -> str:
+            if s:
+                return s
+            return ""
+
+        return [to_str(s) for s in self[:8]]
+
     class Get:
         house_number: Fn[[Address], str] = lambda a: a.house_number
         st_name: Fn[[Address], str] = lambda a: a.st_name
