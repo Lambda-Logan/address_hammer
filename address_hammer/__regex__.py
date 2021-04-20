@@ -2,7 +2,7 @@ import re
 import string
 from typing import Pattern
 
-from .__types__ import Iter, Dict, Union, Opt, Seq
+from .__types__ import Iter, Dict, Union, Opt
 
 
 def or_(l: Iter[str]) -> str:
