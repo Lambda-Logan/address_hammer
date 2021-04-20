@@ -46,11 +46,4 @@ def match(s: str, pat: Pattern[str]) -> Opt[str]:
     return None
 
 
-def match_all(s: str, pat: Pattern[str]) -> Seq[str]:
-    m = re.findall(pat, s)
-    if not m:
-        return ()
-    return m.groups()
-
-
 (or_, and_)
