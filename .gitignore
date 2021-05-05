@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 *.pyc
 pylint_args.txt
+scratchpad.py
