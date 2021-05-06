@@ -527,5 +527,7 @@ class TestSheet(unittest.TestCase):
             return [list(row[1:-1]) for row in l]
 
         a = unify(EXAMPLE_ADDRESSES)
-        sheet = Sheet((1, -1), a + a)
+
+        sheet = Sheet("B:I", a + a)
+
         self.assertEqual(strip(a), strip(sheet.merge_duplicates()))

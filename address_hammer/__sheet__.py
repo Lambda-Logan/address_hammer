@@ -1,8 +1,21 @@
 from __future__ import annotations
-from .__types__ import Tuple, Seq, Iter, List, NamedTuple, Dict, Fn, Opt
+from string import ascii_uppercase
+from .__types__ import Union, Tuple, Seq, Iter, List, NamedTuple, Dict, Fn, Opt
 from .__hammer__ import Hammer
 from .__address__ import RawAddress, Address
 from .__parsing__ import Parser, ParseError
+
+idx_of: Dict[str, int] = dict(
+    [(char, idx) for (idx, char) in enumerate(ascii_uppercase)]
+)
+
+
+def str_to_idxs(s: str) -> Tuple[int, int]:
+    i_j = s.split(":")
+    if len(i_j) != 2:
+        raise Exception("Spreadsheet indices must be in the format 'A:Z'")
+    i, j = i_j
+    return idx_of[i.upper()], idx_of[j.upper()] + 1
 
 
 class Row(NamedTuple):
@@ -19,7 +32,7 @@ class Sheet:
 
     def __init__(
         self,
-        address_idxs: Tuple[int, int],
+        address_idxs: Union[str, Tuple[int, int]],
         rows: Iter[Seq[str]],
         known_cities: Seq[str] = (),
         known_streets: Seq[str] = (),
@@ -29,8 +42,11 @@ class Sheet:
         junk_streets: Seq[str] = (),
         make_batch_checksum: bool = True,
     ):
-        i, j = address_idxs
-        self.address_idxs = address_idxs
+        if isinstance(address_idxs, str):
+            i, j = str_to_idxs(address_idxs)
+        else:
+            i, j = address_idxs
+        self.address_idxs = (i, j)
         p = Parser(known_cities=known_cities)
         parse_errors: List[Tuple[ParseError, str]] = []
 
