@@ -2,6 +2,7 @@ from .__address__ import Address, RawAddress, InvalidAddressError
 from .__parsing__ import ParseStep, Parser, ParseError, EndOfAddressError
 from .__hammer__ import Hammer
 from .__logging__ import log_parse_steps_using
+from .__sheet__ import Sheet
 
 """
 p = Parser(known_cities="Houston Dallas".split())
@@ -26,6 +27,7 @@ b =  ["123 Straight Houuston TX", #typo
 __all__ = [
     "EndOfAddressError",
     "Address",
+    "Sheet",
     "Parser",
     "ParseError",
     "RawAddress",
