@@ -6,9 +6,9 @@ from .__parsing__ import Parser, ParseError
 
 
 class Row(NamedTuple):
-    left: List[str]
+    left: Seq[str]
     address: RawAddress
-    right: List[str]
+    right: Seq[str]
 
 
 class Sheet:
@@ -20,7 +20,7 @@ class Sheet:
     def __init__(
         self,
         address_idxs: Tuple[int, int],
-        rows: Iter[List[str]],
+        rows: Iter[Seq[str]],
         known_cities: Seq[str] = (),
         known_streets: Seq[str] = (),
         city_repair_level: int = 5,
@@ -34,7 +34,7 @@ class Sheet:
         p = Parser(known_cities=known_cities)
         parse_errors: List[Tuple[ParseError, str]] = []
 
-        def parse_row(row: List[str]) -> Opt[Row]:
+        def parse_row(row: Seq[str]) -> Opt[Row]:
             address_str = row[i:j]
             try:
                 address = p.parse_row(address_str)

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Iterator
 import unittest
 from random import shuffle
 import random
@@ -15,6 +16,7 @@ from .__zipper__ import EndOfInputError, Zipper, GenericInput
 from .__fuzzy_string__ import FixTypos
 from .__hammer__ import Hammer
 from .__logging__ import log_parse_steps_using
+from .__sheet__ import Sheet
 
 EXAMPLE_ADDRESSES = [
     Address(
@@ -511,3 +513,19 @@ class TestHammer(unittest.TestCase):
         # print(hammer["001 W Street Ave #4 City MI"].pretty())
 
     # test()
+
+
+class TestSheet(unittest.TestCase):
+    def test(self):
+        def unify(addresses: Iter[Address]) -> List[Seq[str]]:
+            a: List[Seq[str]] = []
+            for address in EXAMPLE_ADDRESSES:
+                a.append((".", *address.as_row(), "-"))
+            return sorted(set(a))
+
+        def strip(l: Iter[Seq[str]]) -> List[Seq[str]]:
+            return [list(row[1:-1]) for row in l]
+
+        a = unify(EXAMPLE_ADDRESSES)
+        sheet = Sheet((1, -1), a + a)
+        self.assertEqual(strip(a), strip(sheet.merge_duplicates()))
