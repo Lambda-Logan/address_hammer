@@ -283,19 +283,51 @@ class Parser:
             s = re.sub(self.known_cities_R, city_repl, s)
         return s
 
+    def __handle_many_suffix__(
+        self, s: str
+    ) -> Opt[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]]:
+
+        """
+        This is to allow st suffices as part of a st name.
+        For example, "123 Park St".
+        It only keeps the last valid st_suffix and all the rest will be part of the st_name.
+
+        However, this means " 123 Main St Isle Royal" will not be correctly parsed.
+        (you would need to use 'known_cities')
+        """
+        st_name: Opt[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = None
+        all_suffices: List[str] = re.findall(st_suffix_R, s)
+        all_suffices.reverse()
+        if len(all_suffices) > 1 and all_suffices[0] != "ST":
+
+            def st_name_arrow(s: str) -> Seq[ParseStep]:
+                if len(all_suffices) > 1 and s == all_suffices[-1]:
+                    all_suffices.pop()
+                    return [ParseStep("st_name", s)]
+                else:
+                    return self.st_name(s)
+
+            st_name = Apply.takewhile(st_name_arrow, False, **Parser.__ex_types__)
+        return st_name
+
     @staticmethod
     def __city_orig__(s: str) -> str:
         s = " ".join([regex.titleize(word) for word in s.split("_")])
         # print(s)
         return s
 
-    def __hn_nesw__(self) -> List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]]:
+    def __hn_nesw__(
+        self,
+        st_name: Opt[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = None,
+    ) -> List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]]:
         Apply = Parser.__Apply__
         p = Parser.__ex_types__
+        if st_name is None:
+            st_name = Apply.takewhile(self.st_name, False, **p)
         return [
             Apply.consume_with(_HOUSE_NUMBER, **p),
             Apply.consume_with(_ST_NESW, **p),
-            Apply.takewhile(self.st_name, False, **p),
+            st_name,
             Apply.takewhile(_ST_SUFFIX, False, **p),
             Apply.consume_with(_ST_NESW, **p),
         ]
@@ -349,14 +381,15 @@ class Parser:
         p = Parser.__ex_types__
         unit: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = lambda z: z
         zip_code: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = lambda z: z
+        st_name = self.__handle_many_suffix__(s)
         if regex.match(s, unit_R):
             unit = Apply.chomp_n(2, __chomp_unit__, **p)
         data = s.split()
         if data and regex.match(data[-1], zip_code_R):
             zip_code = Apply.consume_with(_ZIP_CODE, **p)
-        # TODO make Zipper.takewhile ignore exceptions after 1 consumed???
+
         funcs: List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = [
-            *self.__hn_nesw__(),
+            *self.__hn_nesw__(st_name=st_name),
             unit,
             Apply.takewhile(self.city),
             Apply.consume_with(_US_STATE),
@@ -381,8 +414,10 @@ class Parser:
     def parse_row(self, row: Iter[str]) -> RawAddress:
 
         unit: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = lambda z: z
+
         # zip_code: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
         row = [self.__tokenize__(s) for s in row]
+        st_name = self.__handle_many_suffix__(" ".join(row))
         for cell in row:
             if regex.match(cell, unit_R):
                 unit = Apply.chomp_n(2, __chomp_unit__)
@@ -393,7 +428,7 @@ class Parser:
         )
 
         funcs: List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = [
-            *self.__hn_nesw__(),
+            *self.__hn_nesw__(st_name=st_name),
             unit,
             Apply.takewhile(self.city),
             Apply.consume_with(_US_STATE),

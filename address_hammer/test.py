@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Iterator
 import unittest
 from random import shuffle
 import random
@@ -17,6 +16,7 @@ from .__fuzzy_string__ import FixTypos
 from .__hammer__ import Hammer
 from .__logging__ import log_parse_steps_using
 from .__sheet__ import Sheet
+
 
 EXAMPLE_ADDRESSES = [
     Address(
@@ -95,6 +95,18 @@ EXAMPLE_ADDRESSES = [
         us_state="MI",
         zip_code="00100",
         orig="0 N Division Zamalakoo MI 00100",
+    ),
+    Address(
+        house_number="411",
+        st_name="AVE GRANDE ST JOHN",
+        st_suffix="AVE",
+        st_NESW=None,
+        unit=None,
+        city="WALKER",
+        us_state="IA",
+        zip_code="52352",
+        orig="411 Ave Grande St John Ave Walker IA 52352",
+        batch_checksum="",
     ),
 ]
 
