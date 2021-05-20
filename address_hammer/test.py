@@ -24,17 +24,17 @@ n_times = [0]
 
 def _print(x: Any) -> None:
     n_times[0] += 1
-    # print(x)
+    print(x)
 
 
 # print(p("123 Q Apt 2 G IA 50000"))
 
 with log_parse_steps_using(_print):
-    print(p("123 ST RD 86 Carl Ia"))
+    # print(p("123 ST RD 86 Carl Ia"))
     # SEE THIS https://pe.usps.com/text/pub28/28apf.htm
-    # print(p("123 K Ave NE 3 Y IA 50000"))
+    # print(p("123 N Ave NE 3 Iya IA 50000"))
     pass
-print("n_times:", n_times)
+# print("n_times:", n_times)
 
 
 def _(items: Seq[str]) -> Seq[str]:
@@ -62,6 +62,19 @@ Address(
     us_state="IA",
     zip_code=None,
     orig="123 ST RD 86 Carl Ia",
+    batch_checksum="",
+).reparse_test(p)
+
+Address(
+    house_number="123",
+    st_name="N",
+    st_suffix="AVE",
+    st_NESW="NE",
+    unit="APT 3",
+    city="IYA",
+    us_state="IA",
+    zip_code="50000",
+    orig="123 N Ave NE 3 Iya IA 50000",
     batch_checksum="",
 ).reparse_test(p)
 

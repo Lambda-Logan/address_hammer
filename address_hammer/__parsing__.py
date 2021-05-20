@@ -111,9 +111,9 @@ unit_R = re.compile(regex.or_(unit_types))
 unit_identifier_R = re.compile(r"\#?\s*(\d+[A-Z]?|[A-Z]\d*)")
 
 zip_code_R = re.compile(r"\d{5}")
-
+_HOUSE_NUMBER_R = re.compile(r"[\d/]+")
 _HOUSE_NUMBER = AddressComponent(
-    label="house_number", compiled_pattern=re.compile(r"[\d/]+")  # 123 1/3 Pine St
+    label="house_number", compiled_pattern=_HOUSE_NUMBER_R  # 123 1/3 Pine St
 ).arrow_parse()
 
 
@@ -179,6 +179,8 @@ _ZIP_CODE = AddressComponent(
 ).arrow_parse()
 
 address_midpoint_R = re.compile(regex.or_(st_suffices + st_NESWs + unit_types))
+
+st_NESW_suffix_R = re.compile(regex.or_(st_NESWs) + r" " + regex.or_(st_suffices))
 
 
 def str_to_opt(s: Opt[str]) -> Opt[str]:
@@ -342,18 +344,13 @@ class Parser:
             st_name = Apply.takewhile(self.st_name, False, **p)
 
         def __pre_nesw_maybe_suffix__(words: Seq[str]) -> Seq[ParseStep]:
-            assert len(words) == 2
-            suffix = regex.match(words[1], st_suffix_R)
-            if suffix:
-                print("dddd")
-                return [ParseStep("st_name", words[0]), ParseStep("st_suffix", suffix)]
-            return []  # [ParseStep("st_name", words[0])]
+            "to parse street names that could also be a NESW, like 123 N Ave ..."
+            # TODO
+            return []
 
         return [
             Apply.consume_with(_HOUSE_NUMBER, **p),
-            # Apply.chomp_n(2, __pre_nesw_maybe_suffix__, **p),
             Apply.consume_with(_ST_NESW, **p),
-            # Apply.chomp_n(2, __chomp_rd_number__, **p),
             st_name,
             Apply.chomp_n(2, __chomp_rd_number__, **p),
             Apply.takewhile(_ST_SUFFIX, False, **p),
@@ -362,10 +359,6 @@ class Parser:
             Apply.takewhile(self.city),
             Apply.consume_with(_US_STATE),
             Apply.consume_with(_ZIP_CODE, **p),
-            Apply.consume_with(_ST_NESW, **p),
-            Apply.consume_with(_ST_NESW, **p),
-            Apply.consume_with(_ST_NESW, **p),
-            Apply.consume_with(_ST_NESW, **p),
         ]
 
     def __collect_results__(
@@ -385,6 +378,16 @@ class Parser:
         for p_r in results:
             if p_r.label != "junk":
                 d[p_r.label] += [p_r.value]
+        if not d["st_name"]:
+            if d["st_NESW"]:
+                m = regex.match(_s.upper(), st_NESW_suffix_R)
+                if m:
+                    nesw = m.split()[0]
+                    d_nesw = d["st_NESW"]
+                    try:
+                        d["st_name"] = [d_nesw.pop(d_nesw.index(nesw))]
+                    except ValueError:
+                        pass
 
         # TODO perform S NW AVE bvld sanity checks right here
         if checked:
