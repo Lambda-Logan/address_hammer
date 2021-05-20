@@ -24,11 +24,12 @@ def remove(pat: Pattern[str], s: str) -> str:
     return normalize_whitespace(re.sub(pat, " ", s))
 
 
-__punc__ = str.maketrans("", "", string.punctuation.replace("#", ""))
+__punc__ = str.maketrans("", "", string.punctuation.replace("#", "").replace("/", ""))
 
 
 def remove_punc(s: str, punc: Dict[int, Union[int, None]] = __punc__) -> str:
-    return s.translate(punc)
+    r = s.translate(punc)
+    return r
 
 
 def opt(s: str) -> str:

@@ -111,7 +111,9 @@ unit_R = re.compile(regex.or_(unit_types))
 unit_identifier_R = re.compile(r"\#?\s*(\d+[A-Z]?|[A-Z]\d*)")
 
 zip_code_R = re.compile(r"\d{5}")
-_HOUSE_NUMBER_R = re.compile(r"[\d/]+")
+
+_HOUSE_NUMBER_R = re.compile(regex.or_([r"[\d/]+", r"\d+FRAC\d+"]))
+
 _HOUSE_NUMBER = AddressComponent(
     label="house_number", compiled_pattern=_HOUSE_NUMBER_R  # 123 1/3 Pine St
 ).arrow_parse()
@@ -300,6 +302,7 @@ class Parser:
         s = regex.normalize_whitespace(regex.remove_punc(s).upper())
         s = s.replace("#", "APT ")
         s = s.replace("APT APT", "APT")
+        s = s.replace("/", "FRAC")
         if self.known_cities_R:
             s = re.sub(self.known_cities_R, city_repl, s)
         return s
@@ -352,7 +355,7 @@ class Parser:
             return []
 
         return [
-            Apply.consume_with(_HOUSE_NUMBER, **p),
+            Apply.takewhile(_HOUSE_NUMBER, False, **p),
             Apply.consume_with(_ST_NESW, **p),
             st_name,
             Apply.chomp_n(2, __chomp_rd_number__, **p),
@@ -408,6 +411,9 @@ class Parser:
             str_d[opt] = str_to_opt(str_d[opt])
         str_d["is_raw"] = "true"
         str_d["orig"] = _s
+        hn = str_d["house_number"]
+        if hn:
+            str_d["house_number"] = hn.replace("FRAC", "/")
         a = Address.from_dict(str_d)
         assert isinstance(a, RawAddress)
         return a
@@ -461,7 +467,7 @@ class Parser:
             st_name = Apply.takewhile(self.st_name, False, **p)
 
         funcs: List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = [
-            Apply.consume_with(_HOUSE_NUMBER, **p),
+            Apply.takewhile(_HOUSE_NUMBER, False, **p),
             Apply.consume_with(_ST_NESW, **p),
             st_name,
             Apply.chomp_n(2, __chomp_rd_number__, **p),

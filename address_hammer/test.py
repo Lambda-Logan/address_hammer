@@ -17,9 +17,6 @@ from .__hammer__ import Hammer
 from .__logging__ import log_parse_steps_using
 from .__sheet__ import Sheet
 
-p = Parser()
-
-
 EXAMPLE_ADDRESSES = [
     Address(
         house_number="3710",
@@ -144,6 +141,18 @@ EXAMPLE_ADDRESSES = [
         us_state="IA",
         zip_code=None,
         orig="123 ST RD 86 Carl Ia",
+        batch_checksum="",
+    ),
+    Address(
+        house_number="15 1/2",
+        st_name="4TH",
+        st_suffix="ST",
+        st_NESW="S",
+        unit=None,
+        city="CENTRAL CITY",
+        us_state="IA",
+        zip_code="52214",
+        orig="15 1/2 4th St S Central City IA 52214",
         batch_checksum="",
     ),
 ]
