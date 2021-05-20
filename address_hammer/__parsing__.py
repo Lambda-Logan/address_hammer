@@ -132,9 +132,25 @@ def __make_st_name__(
 # _ST_NAME = __make_st_name__()
 
 
+def __chomp_rd_number__(words: Seq[str]) -> Seq[ParseStep]:
+    # TODO normalize "Road 12" to "Rd 12", highway, etc
+    assert len(words) == 2
+    rd = regex.match(words[0], st_suffix_R)
+    if rd:
+        nm = regex.match(words[1], re.compile(r"\d+"))
+        if nm:
+            return [ParseStep("st_name", rd), ParseStep("st_name", nm)]
+    return []
+
+
+pre_unit_id_R = re.compile(r"[A-Z]?\d+[A-Z]*")
+
+
 def __chomp_unit__(words: Seq[str]) -> Seq[ParseStep]:
     assert len(words) == 2
     unit: Opt[str] = None
+    if regex.match(words[0], pre_unit_id_R):
+        return [ParseStep("unit", "APT " + words[0])]
     if words[0] == "#":
         unit = "APT"
     else:
@@ -144,8 +160,8 @@ def __chomp_unit__(words: Seq[str]) -> Seq[ParseStep]:
     if (unit is None) or (identifier is None):
         # print("unit failed")
         return []
-    result = ParseStep(value="{0} {1}".format(unit, identifier), label="unit")
-    return [result]
+    # result = ParseStep(value="{0} {1}".format(unit, identifier), label="unit")
+    return [ParseStep("unit", unit), ParseStep("unit", identifier)]
 
 
 _ST_NESW = AddressComponent(label="st_NESW", compiled_pattern=st_NESW_R).arrow_parse()
@@ -316,7 +332,7 @@ class Parser:
         # print(s)
         return s
 
-    def __hn_nesw__(
+    def __outline__(
         self,
         st_name: Opt[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = None,
     ) -> List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]]:
@@ -324,11 +340,31 @@ class Parser:
         p = Parser.__ex_types__
         if st_name is None:
             st_name = Apply.takewhile(self.st_name, False, **p)
+
+        def __pre_nesw_maybe_suffix__(words: Seq[str]) -> Seq[ParseStep]:
+            assert len(words) == 2
+            suffix = regex.match(words[1], st_suffix_R)
+            if suffix:
+                print("dddd")
+                return [ParseStep("st_name", words[0]), ParseStep("st_suffix", suffix)]
+            return []  # [ParseStep("st_name", words[0])]
+
         return [
             Apply.consume_with(_HOUSE_NUMBER, **p),
+            # Apply.chomp_n(2, __pre_nesw_maybe_suffix__, **p),
             Apply.consume_with(_ST_NESW, **p),
+            # Apply.chomp_n(2, __chomp_rd_number__, **p),
             st_name,
+            Apply.chomp_n(2, __chomp_rd_number__, **p),
             Apply.takewhile(_ST_SUFFIX, False, **p),
+            Apply.consume_with(_ST_NESW, **p),
+            Apply.chomp_n(2, __chomp_unit__, **p),
+            Apply.takewhile(self.city),
+            Apply.consume_with(_US_STATE),
+            Apply.consume_with(_ZIP_CODE, **p),
+            Apply.consume_with(_ST_NESW, **p),
+            Apply.consume_with(_ST_NESW, **p),
+            Apply.consume_with(_ST_NESW, **p),
             Apply.consume_with(_ST_NESW, **p),
         ]
 
@@ -378,23 +414,11 @@ class Parser:
             except:
                 pass
         s = self.__tokenize__(_s)
-        p = Parser.__ex_types__
-        unit: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = lambda z: z
-        zip_code: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = lambda z: z
         st_name = self.__handle_many_suffix__(s)
-        if regex.match(s, unit_R):
-            unit = Apply.chomp_n(2, __chomp_unit__, **p)
         data = s.split()
-        if data and regex.match(data[-1], zip_code_R):
-            zip_code = Apply.consume_with(_ZIP_CODE, **p)
-
-        funcs: List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = [
-            *self.__hn_nesw__(st_name=st_name),
-            unit,
-            Apply.takewhile(self.city),
-            Apply.consume_with(_US_STATE),
-            zip_code,
-        ]
+        funcs: List[
+            Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]
+        ] = self.__outline__(st_name=st_name)
         try:
 
             f: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = Apply.reduce(
@@ -416,6 +440,7 @@ class Parser:
         unit: Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]] = lambda z: z
 
         # zip_code: Fn[[Zipper[str,ParseStep]], Zipper[str,ParseStep]] = lambda z: z
+        p = self.__ex_types__
         row = [self.__tokenize__(s) for s in row]
         st_name = self.__handle_many_suffix__(" ".join(row))
         for cell in row:
@@ -426,9 +451,15 @@ class Parser:
         _z: Zipper[Seq[str], ParseStep] = Zipper(
             leftover=GenericInput(leftovers), results=[]
         )
+        if st_name is None:
+            st_name = Apply.takewhile(self.st_name, False, **p)
 
         funcs: List[Fn[[Zipper[str, ParseStep]], Zipper[str, ParseStep]]] = [
-            *self.__hn_nesw__(st_name=st_name),
+            Apply.consume_with(_HOUSE_NUMBER, **p),
+            Apply.consume_with(_ST_NESW, **p),
+            st_name,
+            Apply.takewhile(_ST_SUFFIX, False, **p),
+            Apply.consume_with(_ST_NESW, **p),
             unit,
             Apply.takewhile(self.city),
             Apply.consume_with(_US_STATE),

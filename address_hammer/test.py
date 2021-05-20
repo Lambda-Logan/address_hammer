@@ -10,13 +10,60 @@ from .__address__ import (
     merge_duplicates,
     HashableFactory,
 )
-from .__parsing__ import Parser, __difficult_addresses__, ParseError
+from .__parsing__ import Parser, __difficult_addresses__, ParseError, ParseStep
 from .__zipper__ import EndOfInputError, Zipper, GenericInput
 from .__fuzzy_string__ import FixTypos
 from .__hammer__ import Hammer
 from .__logging__ import log_parse_steps_using
 from .__sheet__ import Sheet
 
+p = Parser()
+# TODO
+n_times = [0]
+
+
+def _print(x: Any) -> None:
+    n_times[0] += 1
+    # print(x)
+
+
+# print(p("123 Q Apt 2 G IA 50000"))
+
+with log_parse_steps_using(_print):
+    print(p("123 ST RD 86 Carl Ia"))
+    # SEE THIS https://pe.usps.com/text/pub28/28apf.htm
+    # print(p("123 K Ave NE 3 Y IA 50000"))
+    pass
+print("n_times:", n_times)
+
+
+def _(items: Seq[str]) -> Seq[str]:
+    if items[0] == "hwy" and items[1] == "13":
+        return ["DDD"]
+    return []
+
+
+def is_(a: str) -> Fn[[str], Seq[str]]:
+    def x(s: str) -> Seq[str]:
+        if s == a:
+            return [s]
+        return []
+
+    return x
+
+
+Address(
+    house_number="123",
+    st_name="ST RD 86",
+    st_suffix=None,
+    st_NESW=None,
+    unit=None,
+    city="CARL",
+    us_state="IA",
+    zip_code=None,
+    orig="123 ST RD 86 Carl Ia",
+    batch_checksum="",
+).reparse_test(p)
 
 EXAMPLE_ADDRESSES = [
     Address(
@@ -106,6 +153,18 @@ EXAMPLE_ADDRESSES = [
         us_state="IA",
         zip_code="52352",
         orig="411 Ave Grande St John Ave Walker IA 52352",
+        batch_checksum="",
+    ),
+    Address(
+        house_number="123",
+        st_name="K",
+        st_suffix="AVE",
+        st_NESW="NE",
+        unit="APT 3",
+        city="Y",
+        us_state="IA",
+        zip_code="50000",
+        orig="123 K Ave NE 3 Y IA 50000",
         batch_checksum="",
     ),
 ]
@@ -303,10 +362,10 @@ class TestZipper(unittest.TestCase):
 
         with self.assertRaises(EndOfInputError):
             i: GenericInput[int] = _input([])
-            Zipper(i).chomp_n(2, id_)
+            Zipper(i).force_chomp_n(2, id_)
 
         with self.assertRaises(EndOfInputError):
-            Zipper(_input([0])).chomp_n(2, id_)
+            Zipper(_input([0])).force_chomp_n(2, id_)
 
         Zipper(_input([2, 3, 4])).chomp_n(2, id_).test("chomp 0", [2, 3])
         Zipper(_input([5, 6])).chomp_n(2, id_).test("chomp 1", [5, 6])
@@ -328,7 +387,7 @@ class TestZipper(unittest.TestCase):
         ).test("takewhile 5", f_odds + fan_even(2))
 
         with self.assertRaises(EndOfInputError):
-            Zipper(_input(odds + [2])).takewhile(fan_odd).chomp_n(2, id_)
+            Zipper(_input(odds + [2])).takewhile(fan_odd).force_chomp_n(2, id_)
 
         Zipper(_input(odds + [2])).takewhile(fan_odd).test_leftover("leftover 0", [2])
 

@@ -141,6 +141,29 @@ class Zipper(Generic[I, O]):
         z: Zipper[I, O] = Zipper(leftover=self.leftover, results=list(self.results))
         return z
 
+    def force_chomp_n(
+        self,
+        n: int,
+        list_func: Fn[[Seq[I]], Seq[O]],  # Idk how to typecheck [*args: I]
+        ex_types: Seq[Type[Exception]] = (Uncatchable,),
+    ) -> Zipper[I, O]:
+        """
+        like 'chomp_n', but consumes input even after failure
+        """
+        try:
+            state = self.leftover.state
+            args = self.leftover.data[state : state + n]
+            # print("chomp", args)
+
+            results = list_func(list(args))
+
+            leftover = self.leftover.advance(n)
+            # print(self.leftover.as_str())
+            return self.merge(Zipper(leftover=leftover, results=results))
+        except tuple(ex_types):
+            pass
+        return self
+
     def chomp_n(
         self,
         n: int,
@@ -158,7 +181,9 @@ class Zipper(Generic[I, O]):
             # print("chomp", args)
 
             results = list_func(list(args))
-            leftover = self.leftover.advance(n)
+
+            # ADVANCES BY LENGTH OF RESULTS
+            leftover = self.leftover.advance(min(n, len(results)))
             # print(self.leftover.as_str())
             return self.merge(Zipper(leftover=leftover, results=results))
         except tuple(ex_types):
@@ -307,6 +332,14 @@ class Apply:
             return z
 
         return _
+
+    @staticmethod
+    def force_chomp_n(
+        n: int,
+        list_func: Fn[[Seq[I]], Seq[O]],
+        ex_types: Seq[Type[Exception]] = (Uncatchable,),
+    ) -> Fn[[Zipper[I, O]], Zipper[I, O]]:
+        return lambda z: z.force_chomp_n(n, list_func=list_func, ex_types=ex_types)
 
     @staticmethod
     def chomp_n(
