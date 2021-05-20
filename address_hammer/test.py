@@ -19,31 +19,6 @@ from .__sheet__ import Sheet
 
 p = Parser()
 
-Address(
-    house_number="123",
-    st_name="ST RD 86",
-    st_suffix=None,
-    st_NESW=None,
-    unit=None,
-    city="CARL",
-    us_state="IA",
-    zip_code=None,
-    orig="123 ST RD 86 Carl Ia",
-    batch_checksum="",
-).reparse_test(p)
-
-Address(
-    house_number="123",
-    st_name="N",
-    st_suffix="AVE",
-    st_NESW="NE",
-    unit="APT 3",
-    city="IYA",
-    us_state="IA",
-    zip_code="50000",
-    orig="123 N Ave NE 3 Iya IA 50000",
-    batch_checksum="",
-).reparse_test(p)
 
 EXAMPLE_ADDRESSES = [
     Address(
@@ -145,6 +120,30 @@ EXAMPLE_ADDRESSES = [
         us_state="IA",
         zip_code="50000",
         orig="123 K Ave NE 3 Y IA 50000",
+        batch_checksum="",
+    ),
+    Address(
+        house_number="123",
+        st_name="N",
+        st_suffix="AVE",
+        st_NESW="NE",
+        unit="APT 3",
+        city="IYA",
+        us_state="IA",
+        zip_code="50000",
+        orig="123 N Ave NE 3 Iya IA 50000",
+        batch_checksum="",
+    ),
+    Address(
+        house_number="123",
+        st_name="ST RD 86",
+        st_suffix=None,
+        st_NESW=None,
+        unit=None,
+        city="CARL",
+        us_state="IA",
+        zip_code=None,
+        orig="123 ST RD 86 Carl Ia",
         batch_checksum="",
     ),
 ]

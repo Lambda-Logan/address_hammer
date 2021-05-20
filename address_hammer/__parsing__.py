@@ -134,7 +134,10 @@ def __make_st_name__(
 
 def __chomp_rd_number__(words: Seq[str]) -> Seq[ParseStep]:
     # TODO normalize "Road 12" to "Rd 12", highway, etc
-    assert len(words) == 2
+    if len(words) != 2:
+        return []
+        # print("\n\n", words, "\n\n")
+    # assert len(words) == 2
     rd = regex.match(words[0], st_suffix_R)
     if rd:
         nm = regex.match(words[1], re.compile(r"\d+"))
@@ -461,6 +464,7 @@ class Parser:
             Apply.consume_with(_HOUSE_NUMBER, **p),
             Apply.consume_with(_ST_NESW, **p),
             st_name,
+            Apply.chomp_n(2, __chomp_rd_number__, **p),
             Apply.takewhile(_ST_SUFFIX, False, **p),
             Apply.consume_with(_ST_NESW, **p),
             unit,

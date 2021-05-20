@@ -182,7 +182,7 @@ class Zipper(Generic[I, O]):
 
             results = list_func(list(args))
 
-            # ADVANCES BY LENGTH OF RESULTS
+            # ADVANCES BY LENGTH OF RESULTS (but not more than 'n')
             leftover = self.leftover.advance(min(n, len(results)))
             # print(self.leftover.as_str())
             return self.merge(Zipper(leftover=leftover, results=results))
