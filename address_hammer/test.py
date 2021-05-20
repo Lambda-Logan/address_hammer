@@ -18,39 +18,6 @@ from .__logging__ import log_parse_steps_using
 from .__sheet__ import Sheet
 
 p = Parser()
-# TODO
-n_times = [0]
-
-
-def _print(x: Any) -> None:
-    n_times[0] += 1
-    print(x)
-
-
-# print(p("123 Q Apt 2 G IA 50000"))
-
-with log_parse_steps_using(_print):
-    # print(p("123 ST RD 86 Carl Ia"))
-    # SEE THIS https://pe.usps.com/text/pub28/28apf.htm
-    # print(p("123 N Ave NE 3 Iya IA 50000"))
-    pass
-# print("n_times:", n_times)
-
-
-def _(items: Seq[str]) -> Seq[str]:
-    if items[0] == "hwy" and items[1] == "13":
-        return ["DDD"]
-    return []
-
-
-def is_(a: str) -> Fn[[str], Seq[str]]:
-    def x(s: str) -> Seq[str]:
-        if s == a:
-            return [s]
-        return []
-
-    return x
-
 
 Address(
     house_number="123",
