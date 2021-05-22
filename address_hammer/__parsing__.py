@@ -213,6 +213,11 @@ class Fns_Of_Parser(Fns_Of):
         raise NotImplementedError
 
 
+pre_tok: Fn[[str], str] = regex.multireplace(
+    {"#": "APT", "APT APT": "APT", "/": "FRAC"}
+)
+
+
 class Parser:
 
     """
@@ -297,7 +302,7 @@ class Parser:
         return self.__fns__.st_name
 
     def __tokenize__(self, s: str) -> str:
-        s = s.replace(",", " ")
+        # s = s.replace(",", " ")
         # s = re.sub(p,s," ")
         s = regex.normalize_whitespace(regex.remove_punc(s).upper())
         s = s.replace("#", "APT ")

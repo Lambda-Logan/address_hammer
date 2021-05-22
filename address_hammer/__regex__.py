@@ -2,7 +2,7 @@ import re
 import string
 from typing import Pattern
 
-from .__types__ import Iter, Dict, Union, Opt
+from .__types__ import Iter, Dict, Union, Opt, Fn
 
 
 def or_(l: Iter[str]) -> str:
@@ -30,6 +30,24 @@ __punc__ = str.maketrans("", "", string.punctuation.replace("#", "").replace("/"
 def remove_punc(s: str, punc: Dict[int, Union[int, None]] = __punc__) -> str:
     r = s.translate(punc)
     return r
+
+
+def multireplace(replacements: Dict[str, str]) -> Fn[[str], str]:
+    def normalize_old(s: str) -> str:
+        return s
+
+    re_mode = 0
+
+    replacements = {normalize_old(key): val for key, val in replacements.items()}
+
+    rep_sorted = sorted(replacements, key=len, reverse=True)
+    rep_escaped = map(str, map(re.escape, rep_sorted))
+
+    pattern = re.compile("|".join(rep_escaped), re_mode)
+
+    return lambda s: pattern.sub(
+        lambda match: replacements[normalize_old(match.group(0))], s
+    )
 
 
 def opt(s: str) -> str:
