@@ -17,6 +17,7 @@ from .__hammer__ import Hammer
 from .__logging__ import log_parse_steps_using
 from .__sheet__ import Sheet
 
+
 EXAMPLE_ADDRESSES = [
     Address(
         house_number="3710",
@@ -153,6 +154,30 @@ EXAMPLE_ADDRESSES = [
         us_state="IA",
         zip_code="52214",
         orig="15 1/2 4th St S Central City IA 52214",
+        batch_checksum="",
+    ),
+    Address(
+        house_number="110",
+        st_name="BREWER",
+        st_suffix="ST",
+        st_NESW=None,
+        unit=None,
+        city="HARRY",
+        us_state="MI",
+        zip_code="77777",
+        orig="110\tBREWER ST\tAPT\tHarry MI\t77777",
+        batch_checksum="",
+    ),
+    Address(
+        house_number="720",
+        st_name="1000TH",
+        st_suffix="AVE",
+        st_NESW="SW",
+        unit="APT B",
+        city="MOUNT VERNERS",
+        us_state="IA",
+        zip_code="52314",
+        orig="720 1000th Ave SW B Mount Verners IA 52314",
         batch_checksum="",
     ),
 ]

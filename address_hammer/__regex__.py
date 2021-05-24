@@ -32,24 +32,6 @@ def remove_punc(s: str, punc: Dict[int, Union[int, None]] = __punc__) -> str:
     return r
 
 
-def multireplace(replacements: Dict[str, str]) -> Fn[[str], str]:
-    def normalize_old(s: str) -> str:
-        return s
-
-    re_mode = 0
-
-    replacements = {normalize_old(key): val for key, val in replacements.items()}
-
-    rep_sorted = sorted(replacements, key=len, reverse=True)
-    rep_escaped = map(str, map(re.escape, rep_sorted))
-
-    pattern = re.compile("|".join(rep_escaped), re_mode)
-
-    return lambda s: pattern.sub(
-        lambda match: replacements[normalize_old(match.group(0))], s
-    )
-
-
 def opt(s: str) -> str:
     return "(" + s + ")?"
 

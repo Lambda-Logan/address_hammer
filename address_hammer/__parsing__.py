@@ -98,6 +98,7 @@ us_states: List[str] = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "F
 unit_types: List[str] = ["#", "APT", "BLDG", "STE", "UNIT", "RM", "DEPT", "TRLR", "LOT", "FL"] 
 # fmt: on
 
+unit_types_set = set(unit_types)
 
 st_suffix_R = re.compile(regex.or_(st_suffices))
 
@@ -136,8 +137,8 @@ def __make_st_name__(
 
 def __chomp_rd_number__(words: Seq[str]) -> Seq[ParseStep]:
     # TODO normalize "Road 12" to "Rd 12", highway, etc
-    if len(words) != 2:
-        return []
+    if len(words) == 1:
+        return []  # [ParseStep("house_number", "")]
         # print("\n\n", words, "\n\n")
     # assert len(words) == 2
     rd = regex.match(words[0], st_suffix_R)
@@ -150,16 +151,29 @@ def __chomp_rd_number__(words: Seq[str]) -> Seq[ParseStep]:
 
 pre_unit_id_R = re.compile(r"[A-Z]?\d+[A-Z]*")
 
+no_N = re.compile(
+    r"\b(\d+|[A-D]|[F-M]|[O-R]|[T-V]|[X-Z])(\d+|[A-D]|[F-M]|[O-R]|[T-V]|[X-Z])?\b"
+)
+
 
 def __chomp_unit__(words: Seq[str]) -> Seq[ParseStep]:
-    assert len(words) == 2
+    # assert len(words) == 2
+    if len(words) == 1:
+        return [ParseStep("city", "")]
     unit: Opt[str] = None
-    if regex.match(words[0], pre_unit_id_R):
-        return [ParseStep("unit", "APT " + words[0])]
+    if words[0] not in unit_types_set:
+        if regex.match(words[0], no_N):
+            return [ParseStep("unit", "APT " + words[0])]
+        else:
+            return []
     if words[0] == "#":
         unit = "APT"
     else:
         unit = regex.match(words[0], unit_R)
+
+    if not re.match(no_N, words[1]):
+        return [ParseStep("junk", "")]
+
     identifier = regex.match(words[1], unit_identifier_R)
     # print("uunit", unit, identifier)
     if (unit is None) or (identifier is None):
@@ -213,9 +227,10 @@ class Fns_Of_Parser(Fns_Of):
         raise NotImplementedError
 
 
-pre_tok: Fn[[str], str] = regex.multireplace(
-    {"#": "APT", "APT APT": "APT", "/": "FRAC"}
-)
+pre_tok: Dict[
+    str,
+    Tuple[Fn[[str], str], Fn[[Fn[[Dict[str, str]], None]], Fn[[Dict[str, str]], None]]],
+] = {}
 
 
 class Parser:
