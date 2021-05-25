@@ -98,6 +98,12 @@ us_states: List[str] = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "F
 unit_types: List[str] = ["#", "APT", "BLDG", "STE", "UNIT", "RM", "DEPT", "TRLR", "LOT", "FL"] 
 # fmt: on
 
+# KY is a valid street suffix!!!!!!!
+# TODO
+state_set = set(us_states)
+st_suffices = [s for s in st_suffices if s not in state_set]
+
+
 unit_types_set = set(unit_types)
 
 st_suffix_R = re.compile(regex.or_(st_suffices))
