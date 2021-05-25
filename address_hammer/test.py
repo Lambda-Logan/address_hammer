@@ -17,7 +17,23 @@ from .__hammer__ import Hammer
 from .__logging__ import log_parse_steps_using
 from .__sheet__ import Sheet
 
+p = Parser()
+print(p("123 Calm St A Bron WV"))
 
+todo = [
+    Address(
+        house_number="123",
+        st_name="ST RD 86",
+        st_suffix=None,
+        st_NESW=None,
+        unit=None,
+        city="CARL",
+        us_state="IA",
+        zip_code=None,
+        orig="123 ST RD 86 Carl Ia",
+        batch_checksum="",
+    )
+]
 EXAMPLE_ADDRESSES = [
     Address(
         house_number="3710",
@@ -133,18 +149,6 @@ EXAMPLE_ADDRESSES = [
         batch_checksum="",
     ),
     Address(
-        house_number="123",
-        st_name="ST RD 86",
-        st_suffix=None,
-        st_NESW=None,
-        unit=None,
-        city="CARL",
-        us_state="IA",
-        zip_code=None,
-        orig="123 ST RD 86 Carl Ia",
-        batch_checksum="",
-    ),
-    Address(
         house_number="15 1/2",
         st_name="4TH",
         st_suffix="ST",
@@ -178,6 +182,18 @@ EXAMPLE_ADDRESSES = [
         us_state="IA",
         zip_code="52314",
         orig="720 1000th Ave SW B Mount Verners IA 52314",
+        batch_checksum="",
+    ),
+    Address(
+        house_number="123",
+        st_name="CALM",
+        st_suffix="ST",
+        st_NESW=None,
+        unit="APT A",
+        city="BRON",
+        us_state="WV",
+        zip_code=None,
+        orig="123 Calm St A Bron WV",
         batch_checksum="",
     ),
 ]
