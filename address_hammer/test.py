@@ -197,6 +197,7 @@ EXAMPLE_ADDRESSES = [
         batch_checksum="",
     ),
 ]
+EXAMPLE_ADDRESSES.extend(todo)
 
 
 def parse_benchmak():

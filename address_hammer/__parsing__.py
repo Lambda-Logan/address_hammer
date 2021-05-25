@@ -142,7 +142,7 @@ def __chomp_rd_number__(words: Seq[str]) -> Seq[ParseStep]:
         # print("\n\n", words, "\n\n")
     # assert len(words) == 2
     rd = regex.match(words[0], st_suffix_R)
-    if rd:
+    if rd in ["RD", "HWY", "RTE"]:
         nm = regex.match(words[1], re.compile(r"\d+"))
         if nm:
             return [ParseStep("st_name", rd), ParseStep("st_name", nm)]
@@ -378,7 +378,7 @@ class Parser:
             Apply.takewhile(_HOUSE_NUMBER, False, **p),
             Apply.consume_with(_ST_NESW, **p),
             st_name,
-            # Apply.chomp_n(2, __chomp_rd_number__, **p),
+            Apply.chomp_n(2, __chomp_rd_number__, **p),
             Apply.takewhile(_ST_SUFFIX, False, **p),
             Apply.consume_with(_ST_NESW, **p),
             Apply.chomp_n(2, __chomp_unit__, **p),
@@ -490,7 +490,7 @@ class Parser:
             Apply.takewhile(_HOUSE_NUMBER, False, **p),
             Apply.consume_with(_ST_NESW, **p),
             st_name,
-            # Apply.chomp_n(2, __chomp_rd_number__, **p),
+            Apply.chomp_n(2, __chomp_rd_number__, **p),
             Apply.takewhile(_ST_SUFFIX, False, **p),
             Apply.consume_with(_ST_NESW, **p),
             unit,
