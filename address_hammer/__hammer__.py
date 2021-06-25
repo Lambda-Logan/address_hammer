@@ -236,6 +236,9 @@ class Hammer:
     def __iter__(self) -> Iter[Address]:
         return iter(self.__addresses__)
 
+    def as_list(self) -> List[Address]:
+        return list(self.__addresses__)
+
     def zero_or_more(self, a: Union[Address, str]) -> List[Address]:
         if isinstance(a, Address):
             check_checksum(self.batch_checksum, a.batch_checksum)

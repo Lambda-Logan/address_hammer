@@ -6,3 +6,5 @@ __pycache__/
 pylint_args.txt
 scratchpad.py
 failed_addresses.txt
+*.txt
+
