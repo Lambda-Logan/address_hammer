@@ -45,7 +45,9 @@ st_NESW_R = re.compile(regex_or(st_NESWs))
 us_state_R = re.compile(regex_or(us_states))
 
 unit_R = re.compile(regex_or(unit_types_lst))
-unit_identifier_R = re.compile(r"\#?\s*(\d+[A-Z]?|[A-Z]\d*)")
+unit_identifier_R = re.compile(r"\#?\s*((\d+[A-Z]?|[A-Z]\d*)|([A-Z]|\d+)-([A-Z]|\d+))")
+# unit_identifier_R = re.compile(r"([A-Z]|\d+)-([A-Z]|\d+)")
+print("\t\t\t##########", re.fullmatch(unit_identifier_R, "1-3"))
 
 zip_code_R = re.compile(r"\d{5}(-\d+)?")
 _HOUSE_NUMBER_R = re.compile(r"[\d/]+")
@@ -339,10 +341,10 @@ unitary_unit_types = {
 }
 
 unit_types.update(unitary_unit_types)
-no_N = re.compile(
-    r"#?\b(\d+|[A-D]|[F-M]|[O-R]|[T-V]|[X-Z])(\d+|[A-D]|[F-M]|[O-R]|[T-V]|[X-Z])?\b"
-)
-no_N = re.compile(r"#?\b(\d+|)?\b")
+# no_N = re.compile(
+# r"#?\b(\d+\|[A-D]|[F-M]|[O-R]|[T-V]|[X-Z])(\d+|[A-D]|[F-M]|[O-R]|[T-V]|[X-Z])?\b"
+# )
+# no_N = re.compile(r"#?\b(\d+|)?\b")
 # TODO BYPASS
 # TODO KENTUCKY 440
 hwys: MDict = {
@@ -444,7 +446,7 @@ def __get_secondary_unit_range__() -> Fn[[In[str], Fn[[In[str]], None]], Opt[str
 
 get_unit_type = from_mealy(to_mealy(unit_types))
 get_unitary_unit_type = from_mealy(to_mealy(unitary_unit_types))
-get_secondary_range = try_regex(no_N)
+# get_secondary_range = try_regex(no_N)
 get_hwy_name = get_with_label(
     "st_name", from_mealy(to_mealy(hwys), normalizers=[to_normalizer(hwys_syns)])
 )
@@ -468,6 +470,7 @@ def get_unit(inpt: In[str], save: Fn[[In[str]], None]) -> Opt[Tuple[str, str]]:
     single = get_unitary_unit_type(inpt, save)
     if single:
         return ("unit", single)
+    # i.e, "3, APT" (because it's parsed from back to from at this point)
     x, xs = inpt.item(), inpt.rest()
     if re.match(st_suffix_R, x):
         return None
@@ -530,10 +533,12 @@ get_city = get_with_label(
     "city",
     from_mealy(city_mealy(), normalizers=[syns]),
 )
+unit_id_atom = r"(\d+|\d+[A-Z]?|[A-Z]\d+|[A-D]|[F-M]|[O-R]|[T-V]|[X-Z])"
+dash = r"\-"
+lonely_unit_regex = re.compile(f"^#?{unit_id_atom}({dash}{unit_id_atom})?$")
 
-lonely_unit_id = try_regex(
-    re.compile(r"^#?(\d+|\d+[A-Z]?|[A-Z]\d+|[A-D]|[F-M]|[O-R]|[T-V]|[X-Z])$")
-)
+lonely_unit_id = try_regex(lonely_unit_regex)
+
 get_nesw_single = get_with_label("st_NESW", try_regex(st_NESW_R))
 
 

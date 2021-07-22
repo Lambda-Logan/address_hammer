@@ -306,6 +306,18 @@ EXAMPLE_ADDRESSES = [
         orig="12345 OLD KNOXVILLE HWY   A   ROCKFORD    TN  37000",
         batch_checksum="",
     ),
+    Address(
+        house_number="123",
+        st_name="STRAIGHT",
+        st_suffix="ST",
+        st_NESW=None,
+        unit="UNIT 1B-2A",
+        city="SACRAMENTO",
+        us_state="CA",
+        zip_code=None,
+        orig="123 Straight St  1B-2A Sacramento CA",
+        batch_checksum="",
+    ),
 ]
 EXAMPLE_ADDRESSES.extend(todo)
 
