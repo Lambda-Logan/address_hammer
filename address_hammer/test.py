@@ -28,7 +28,7 @@ from .__sheet__ import Sheet
 
 
 # print(p("123 Park St Bla Av St John FL"))
-
+# SUPPORT THESE ADDRESSES
 
 """
 123 COVE RD WEIRTON WV
@@ -316,6 +316,18 @@ EXAMPLE_ADDRESSES = [
         us_state="CA",
         zip_code=None,
         orig="123 Straight St  1B-2A Sacramento CA",
+        batch_checksum="",
+    ),
+    Address(
+        house_number="12345",
+        st_name="W 1000",
+        st_suffix=None,
+        st_NESW="N",
+        unit=None,
+        city="DECATUR",
+        us_state="IN",
+        zip_code="46733-0000",
+        orig="12345\tW 1000 N\tDECATUR\tIN\t46733-0000",
         batch_checksum="",
     ),
 ]

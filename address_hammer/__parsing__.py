@@ -47,7 +47,6 @@ us_state_R = re.compile(regex_or(us_states))
 unit_R = re.compile(regex_or(unit_types_lst))
 unit_identifier_R = re.compile(r"\#?\s*((\d+[A-Z]?|[A-Z]\d*)|([A-Z]|\d+)-([A-Z]|\d+))")
 # unit_identifier_R = re.compile(r"([A-Z]|\d+)-([A-Z]|\d+)")
-print("\t\t\t##########", re.fullmatch(unit_identifier_R, "1-3"))
 
 zip_code_R = re.compile(r"\d{5}(-\d+)?")
 _HOUSE_NUMBER_R = re.compile(r"[\d/]+")
@@ -74,6 +73,20 @@ def try_regex(pat: Pattern[str]) -> Fn[[In[str], Fn[[In[str]], None]], Opt[str]]
             return None
         item, rest = inpt.view()
         m = re.match(pat, item)
+        if m is not None and m:
+            save(rest)
+            return m.group(0)
+        return None
+
+    return x
+
+
+def try_full_regex(pat: Pattern[str]) -> Fn[[In[str], Fn[[In[str]], None]], Opt[str]]:
+    def x(inpt: In[str], save: Fn[[In[str]], None]) -> Opt[str]:
+        if inpt.empty():
+            return None
+        item, rest = inpt.view()
+        m = re.fullmatch(pat, item)
         if m is not None and m:
             save(rest)
             return m.group(0)
@@ -539,7 +552,7 @@ lonely_unit_regex = re.compile(f"^#?{unit_id_atom}({dash}{unit_id_atom})?$")
 
 lonely_unit_id = try_regex(lonely_unit_regex)
 
-get_nesw_single = get_with_label("st_NESW", try_regex(st_NESW_R))
+get_nesw_single = get_with_label("st_NESW", try_full_regex(st_NESW_R))
 
 
 def space_join(stream: Iter[str]) -> str:
@@ -562,6 +575,20 @@ def get_city_til_tab(inpt: In[str], save: Fn[[In[str]], None]) -> Iter[str]:
             save(rest)
             break
         yield cell
+
+
+starts_with_digit = re.compile(r"^\d")
+
+
+def merge_rural_hwy(inpt: List[str]) -> List[str]:
+    """Detects if an address has the form '123 W 2100 S, Tucson AZ'
+    & merges 'W' and '2100' into a single token 'W-2100'
+    """
+    if re.match(starts_with_digit, inpt[2]):
+        # TODO match 'north west 2100' instead of only 'nw 2100'
+        if re.fullmatch(st_NESW_R, inpt[1]):
+            return [inpt[0], f"{inpt[1]} {inpt[2]}", *inpt[3:]]
+    return inpt
 
 
 class FnsOfParser(Fns_Of):
@@ -610,6 +637,7 @@ class Parser:
             yield unit[0], unit[1].replace("#", "")
         yield get_nesw(get_inpt(), save)
         hwy = get_full_hwy(get_inpt(), save)
+
         if len(get_inpt()) > 2:
             lonely_unit = lonely_unit_id(get_inpt(), save)
             if lonely_unit:
@@ -618,12 +646,14 @@ class Parser:
                 yield get_nesw(get_inpt(), save)
         pre_suffixed = get_inpt()  # 123    Fields East    City    IL
         st_suffix = get_st_suffix(get_inpt(), save)
+
         ######################################
         ######################################
         save(In(list(reversed(list(get_inpt())))))
         house_number: List[str] = []
         st_name: List[str] = []
         hn = get_house_number(get_inpt(), save)
+
         if hn:
             house_number.append(hn[1])
         else:
@@ -636,7 +666,9 @@ class Parser:
                 house_number.append(hn[1])
             else:
                 st_name.append(hn[1])
+
         st_nesw = get_nesw_single(get_inpt(), save)
+
         if st_nesw:
             if get_inpt().empty():  # 123 N Ave NE
                 st_name.append(st_nesw[1])
@@ -657,6 +689,7 @@ class Parser:
 
     def tag(self, a: str) -> Iter[Tuple[str, str]]:
         add = a.upper().split()
+        add = merge_rural_hwy(add)
         add.reverse()
         k = In(add)
         f: List[In[str]] = [k]
@@ -704,6 +737,7 @@ class Parser:
             pass  # TODO raise parse error @ us_state
         yield "city", normalize_whitespace(row.pop().upper())
         data = list(join(map(lambda s: s.upper().split(), row)))
+        data = merge_rural_hwy(data)
         data.reverse()
         r = [In(data)]
         for pair in self.__tag__(lambda: r[0], make_mod(r), city_done=True):
