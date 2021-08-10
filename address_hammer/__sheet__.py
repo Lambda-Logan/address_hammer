@@ -25,6 +25,19 @@ class Row(NamedTuple):
 
 
 class Sheet:
+    """
+    For combining duplicate addresses from a spreadsheet.
+
+    For example, let's say we have a spreadsheet where the address info is contained in columns ``B`` thru ``I``:
+
+    ``rows: List[List[str]] = open_your_spreadsheet(..)``
+    ``sheet = Sheet("B:I", a + a)``
+    ``merged_rows = list(sheet.merge_duplicates())``
+
+    The default way to merge extra cells of duplicate addresses is concatenation with ``" & "``. To change this behavior, subclass ``Sheet`` and override the ``combine_cells`` method.
+    For example, phones associated with the same address with be like ``"616-123-1234 & 313-123-4567"``
+    """
+
     hammer: Hammer
     rows: List[Row]
     address_idxs: Tuple[int, int]
@@ -42,6 +55,8 @@ class Sheet:
         junk_streets: Seq[str] = (),
         make_batch_checksum: bool = True,
     ):
+        """See ``class`` docs. Takes all optional args for a ``Hammer``"""
+
         if isinstance(address_idxs, str):
             i, j = str_to_idxs(address_idxs)
         else:

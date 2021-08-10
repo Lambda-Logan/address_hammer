@@ -43,28 +43,27 @@ remove_unit = Address.Set(unit=lambda x: None)
 
 class Hammer:
     """
-    A Hammer normalizes addresses so that all addresses have completed information and are hashable.
-    NOTE: You should only have one Hammer instance, and it should be initialized using all addresses the hammer will ever see.
+    A ``Hammer`` normalizes addresses so that all addresses have completed information and are hashable.
+    NOTE: You should only have one ``Hammer`` instance, and it should be initialized using all addresses the hammer will ever see.
 
-        hammer = Hammer(all_addresses)
+        ``hammer = Hammer(all_addresses)``
 
-    hammer.__getitem__(address) will map a str or RawAddress to zero or one Address, which will be the completed address.
-    An address can only be incomplete when compared to other similar addresses seen by the hammer.
-    A Hammer cleans the RawAddresses, fixes typos and fills in missing optional fields that are present in similar duplicate addresses.
+    ``hammer.__getitem__(address)`` will map a str or ``RawAddress`` to zero or one ``Address``, which will be the completed address.
+
+    A ``Hammer`` cleans the ``RawAddresses``, fixes typos and fills in missing optional fields that are present in similar duplicate addresses.
 
     i.e if a hammer sees both A and B, both addresses will be normalized as C where:
+        ``A = "123 W Main    Boston MA"``
 
-        A = "123 W Main    Boston MA"
+        ``B = "123   Main St Boston MA"``
 
-        B = "123   Main St Boston MA"
+        ``C = "123 W Main St Boston MA"``
 
-        C = "123 W Main St Boston MA"
-
-        assert hammer[A] == C and hammer[B] == C
+        ``assert hammer[A] == C and hammer[B] == C``
 
     Or, given A and B above:
 
-        hammer["123 Main Apt 7 Boston MA"] == "123 W Main St Apt 7 Boston MA"
+        ``hammer["123 Main Apt 7 Boston MA"] == "123 W Main St Apt 7 Boston MA"``
 
     """
 

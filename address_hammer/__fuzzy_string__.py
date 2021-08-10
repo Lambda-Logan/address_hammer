@@ -79,9 +79,9 @@ class FixTypos:
     'cuttoff' is an integer between 0-10 (inclusive)
 
     'a' will fix minor typos, 'b' will liberally repair broadly similar words and 'c' will be the identity function:
-        a = FixTypos(vocablist, cuttoff = 1 )
-        b = FixTypos(vocablist, cuttoff = 10)
-        c = FixTypos(vocablist, cuttoff = 0 )
+        ``a = FixTypos(vocablist, cuttoff = 1 )``
+        ``b = FixTypos(vocablist, cuttoff = 10)``
+        ``c = FixTypos(vocablist, cuttoff = 0 )``
     """
 
     cuttoff: float

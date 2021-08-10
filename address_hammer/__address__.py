@@ -60,6 +60,29 @@ CHECKSUM_IGNORE = ""
 
 
 class Address(NamedTuple):
+    """
+        An ``Address`` is a namedtuple representing a US residential address. It's only produced by using ``Hammer``.
+
+        Unlike a ``RawAddress`` produced from a parser, ``Address`` is fully hashable and has no missing info for the life of the program. Anything not required by USPS postal standards is optional. The simplified definition of ``Address`` is roughly the following:
+
+    from typing import NamedTuple, Optional
+
+    ``class Address(NamedTuple):``
+        ``house_number: str``
+        ``st_name: str``
+        ``st_suffix: Optional[str]``
+        ``st_NESW: Optional[str]``
+        ``unit: Optional[str]``
+        ``city: str``
+        ``us_state: str``
+        ``zip_code: Optional[str]``
+        ``orig: str``
+
+    Two addresses can still be equal even with missing information, with the rule that all info that is present in both addresses must be equal (except orig).
+
+    All attributes are available as a first class function via ``Address.Get``. For example: ``map(Address.Get.house_number, hammer)``
+    """
+
     house_number: str
     st_name: str
     st_suffix: Opt[str]

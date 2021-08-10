@@ -598,6 +598,16 @@ class FnsOfParser(Fns_Of):
 
 
 class Parser:
+    """
+    The parser for addresses.
+
+    ``from address_hammer import Parser, RawAddress``
+    ``p = Parser()``
+    ``address: RawAddress = p("999 8th blvd California CA 54321")``
+
+    It comes pre-trained, and can recognize nearly all U.S cities. However, if there does happen to be a city it fails on, it can be passed to the ``known_cities`` argument of ``Parser.__init__``
+    """
+
     __fns_of__: FnsOfParser
     known_cities: List[str]
 
@@ -688,6 +698,13 @@ class Parser:
         yield "house_number", space_join(house_number)
 
     def tag(self, a: str) -> Iter[Tuple[str, str]]:
+        """
+        Returns an iter of (label, value) for all parsing steps in ``Parser.__call__``.
+        This can be useful for debugging why an address failed.
+
+        ``tags = [t for t in p.tag("777 Collins Southfield Maine")]``
+        ``assert tags == [('orig', '777 Collins Southfield Maine'), ('us_state', 'ME'), ('city', 'SOUTHFIELD'), ('st_name', 'COLLINS'), ('house_number', '777')]``
+        """
         add = a.upper().split()
         add = merge_rural_hwy(add)
         add.reverse()
@@ -721,6 +738,11 @@ class Parser:
         )
 
     def tag_row(self, a: Seq[str]) -> Iter[Tuple[str, str]]:
+        """
+        Identical to ``Parser.tag``, but used when parsing a list of strings that, together, is an entire address.
+        This can increase accuracy by using the pre-existing delimiters in the input.
+        For example, the ``known_cities`` arg to ``Parser.__init__`` is not needed to process unseen addresses.
+        """
         yield "orig", "\t".join(a)
         row = [x for x in map(lambda s: s.strip(), a) if x]
         to_inpt_lst: Fn[[str], List[In[str]]] = lambda s: [In(s.upper().split())]
@@ -747,6 +769,10 @@ class Parser:
                     yield pair
 
     def __call__(self, s: str) -> RawAddress:
+        """Parses an address string and performs normalization in a single pass, returning a ``RawAddress``, possibly throwing a ``ParseError`` on failure.
+        Directionals such as ``"South"`` and ``"Nth west"`` will all be normalized to the abbreviated form (except when part of a city name, as in ``"South Haven"``). This is the USPS standardized way to write states, such as ``"N Carolina"``
+        """
+
         try:
             return self.__collect__(dict(self.tag(s)))
         except KeyError as ke:
@@ -755,6 +781,11 @@ class Parser:
             raise ParseError(s, "End of input")
 
     def parse_row(self, a: Seq[str]) -> RawAddress:
+        """
+        Identical to ``Parser.__call__``, but used when parsing a list of strings that, together, is an entire address.
+        This can increase accuracy by using the pre-existing delimiters in the input.
+        For example, the ``known_cities`` arg to ``Parser.__init__`` is not needed to process unseen addresses.
+        """
         try:
             return self.__collect__(dict(self.tag_row(a)))
         except KeyError as ke:
