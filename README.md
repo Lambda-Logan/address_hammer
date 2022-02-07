@@ -53,6 +53,7 @@ for address in hammer:
 Seen addresses will be used to fill in missing info from other incomplete versions of the same address.
 For example, given an unseen and incomplete version of the above address:
 ```python
+
 a = hammer["123 Main Boston MA"] 
 assert a.st_suffix == "ST"
 assert a.st_NESW   == "W"
@@ -61,9 +62,12 @@ assert a.st_NESW   == "W"
 The weak guarantee is that hammered addresses will be 100% complete for the life of the program.
 The `Hammer` must thus be initialized with all addresses the program will ever see
 ```python
-hammer["321 Fake St Lot 446 Phoenix AZ"]
-# >> KeyError !!!
+print(hammer["321 Fake St Lot 446 Phoenix AZ"])
+# >> raises a KeyError !!!
+```
 
+If the address is added to the initial list of addresses that the `Hammer` is built from, then it works as intended.
+```python
 addresses = ["123 W Main    Boston MA",
              "123   Main St Boston MA",
              "321 Fake St Lot 446 Phoenix AZ"]
@@ -83,7 +87,7 @@ for error, bad_address in h.parse_errors:
     print(bad_address)
     raise error
 # >> 'Junk address string wooohoooo'
-# EndOfInputError !
+# >> raises an EndOfInputError !
 ```
 
 
@@ -147,11 +151,11 @@ p("128 E Grandville Grandville MI")
 ```
 
 
-
+/*
 # Parsing addresses from a spreadsheet
 Addresses in a spreadsheet are already usually semi-parsed. If your data is coming from a spreadsheet or csv, please use `Parser.parse_row`
 
-```python
+` ` `python
 from address_hammer import Parser
 row = ["123 Foo", "Barville AZ"]
 s = "123 Foo Barville AZ"
@@ -162,44 +166,44 @@ address = p.parse_row(row)
 
 #this will not
 address = p(s)
-```
+` ` ` 
+*/
 
 # Debugging
 
-The main debugging tool is `log_parse_steps_using`.
+The main debugging tool is `Parser.tag`.
 
 ```python
-from address_hammer import Parser, RawAddress, log_parse_steps_using
+from address_hammer import Parser
 p = Parser()
-with log_parse_steps_using(print):
-    p("9393 Pretty Cloud Rd, Sky Town WY")
+for tag, value in p.tag("9393 Pretty Cloud Rd, Sky Town WY"):
+    print(f"{tag} = '{value}'")
+
 ```
 ... will print the following
 ```python
-ParseStep(label='house_number', value='9393')
-ParseStep(label='st_name', value='PRETTY')
-ParseStep(label='st_name', value='CLOUD')
-ParseStep(label='st_suffix', value='RD')
-ParseStep(label='city', value='SKY')
-ParseStep(label='city', value='TOWN')
-ParseStep(label='us_state', value='WY')
+orig = '9393 Pretty Cloud Rd, Sky Town WY'
+
+us_state = 'WY'
+
+st_name = 'PRETTY CLOUD RD, SKY TOWN'
+
+house_number = '9393'
 ```
 
 This is useful to find out why an address didn't parse correctly. For example, if we had use the string `"123 Foo Barville AZ"`, then it would print the following and then raise a `ParseError`
 
 ```python
-with log_parse_steps_using(print):
-    p("123 Foo Barville AZ")
+for tag, value in p.tag("123 Green St MadeUpCity AZ"):
+    print(f"{tag} = '{value}'")
 ```
 
-will print the following and then raise an error
+will print the following
 ```python
-ParseStep(label='house_number', value='123')
-ParseStep(label='st_name', value='FOO')
-ParseStep(label='st_name', value='BARVILLE') # st_name never stops because there is nothing between the st_name and the city
-ParseStep(label='st_name', value='AZ')
-
->>> ParseError: @ Could not identify us_state: 123 Foo Barville AZ
+orig = '123 Green St MadeUpCity AZ'
+us_state = 'AZ'
+st_name = 'GREEN ST MADEUPCITY' # "madeupcity" will not be recognized as a city, and thus is joined to the street
+house_number = '123'
 ```
 
 
