@@ -737,7 +737,7 @@ class Parser:
             batch_checksum="",
         )
 
-    def tag_row(self, a: Seq[str]) -> Iter[Tuple[str, str]]:
+    def __tag_row__g(self, a: Seq[str]) -> Iter[Tuple[str, str]]:
         """
         Identical to ``Parser.tag``, but used when parsing a list of strings that, together, is an entire address.
         This can increase accuracy by using the pre-existing delimiters in the input.
@@ -780,7 +780,7 @@ class Parser:
         except EndOfInputError:
             raise ParseError(s, "End of input")
 
-    def parse_row(self, a: Seq[str]) -> RawAddress:
+    def __parse_row__(self, a: Seq[str]) -> RawAddress:
         """
         Identical to ``Parser.__call__``, but used when parsing a list of strings that, together, is an entire address.
         This can increase accuracy by using the pre-existing delimiters in the input.
