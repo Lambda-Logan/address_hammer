@@ -26,6 +26,10 @@ from .__fuzzy_string__ import FixTypos
 from .__hammer__ import Hammer
 from .__sheet__ import Sheet
 
+# these methods are not publicly exposed at the moment. But they should still be tested
+Parser.parse_row = Parser.__parse_row__
+Parser.tag_row = Parser.__tag_row__
+
 
 # print(p("123 Park St Bla Av St John FL"))
 # SUPPORT THESE ADDRESSES

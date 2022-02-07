@@ -208,7 +208,7 @@ house_number = '123'
 
 
 # Performance
-`address_hammer` is designed for simplicity, robustness and type safety. If you need to process millions of addresses, you may need some patience or another library. However, on my machine `Parser` will parse about 2,400 addresses per second and has been tested on 500K+ real-world addresses.
+`address_hammer` is designed for simplicity, robustness and type safety. However, it is also the fastest an most accurate address parser I've tested that's written in pure python. On my machine `Parser` will process about 6,000 addresses per second and has been tested on *millions* of real-world addresses.
 
 
 
