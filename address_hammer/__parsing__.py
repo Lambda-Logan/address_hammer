@@ -705,7 +705,8 @@ class Parser:
         ``tags = [t for t in p.tag("777 Collins Southfield Maine")]``
         ``assert tags == [('orig', '777 Collins Southfield Maine'), ('us_state', 'ME'), ('city', 'SOUTHFIELD'), ('st_name', 'COLLINS'), ('house_number', '777')]``
         """
-        add = a.upper().split()
+        
+        add = re.sub(r"[.,]", " ", a).upper().split()
         add = merge_rural_hwy(add)
         add.reverse()
         k = In(add)

@@ -334,6 +334,8 @@ EXAMPLE_ADDRESSES = [
         orig="12345\tW 1000 N\tDECATUR\tIN\t46733-0000",
         batch_checksum="",
     ),
+
+    Address(house_number='1010', st_name='MAIN', st_suffix='ST', st_NESW=None, unit=None, city='HASTINGS', us_state='AK', zip_code=None, orig='1010 Main St Hastings, AK', batch_checksum='')
 ]
 EXAMPLE_ADDRESSES.extend(todo)
 
